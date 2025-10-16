@@ -1,0 +1,6 @@
+# Runtime dependencies
+pyperclip>=1.11.0
+
+# Development dependencies
+pytest>=8.0.0
+ruff>=0.4.0

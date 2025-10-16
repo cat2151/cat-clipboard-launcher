@@ -1,0 +1,387 @@
+"""Tests for clipboard launcher."""
+
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
+from src.launcher import (
+    display_tui,
+    execute_command,
+    get_clipboard_content,
+    get_user_choice,
+    load_config,
+    match_patterns,
+    save_to_temp_file,
+)
+
+
+class TestLoadConfig:
+    """Tests for load_config function."""
+
+    def test_load_valid_config(self, tmp_path):
+        """Test loading a valid TOML config file."""
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(
+            """
+clipboard_temp_file = "C:/temp/test.txt"
+
+[[patterns]]
+name = "Test Pattern"
+regex = "test"
+command = "echo test"
+"""
+        )
+
+        config = load_config(config_file)
+        assert config["clipboard_temp_file"] == "C:/temp/test.txt"
+        assert len(config["patterns"]) == 1
+        assert config["patterns"][0]["name"] == "Test Pattern"
+
+    def test_load_nonexistent_config(self, tmp_path, capsys):
+        """Test loading a non-existent config file."""
+        config_file = tmp_path / "nonexistent.toml"
+
+        with pytest.raises(SystemExit):
+            load_config(config_file)
+
+        captured = capsys.readouterr()
+        assert "エラー: 設定ファイルが見つかりません" in captured.out
+
+    def test_load_invalid_toml(self, tmp_path, capsys):
+        """Test loading an invalid TOML file."""
+        config_file = tmp_path / "invalid.toml"
+        config_file.write_text("invalid toml content [[[")
+
+        with pytest.raises(SystemExit):
+            load_config(config_file)
+
+        captured = capsys.readouterr()
+        assert "エラー: TOML設定ファイルの構文エラー" in captured.out
+
+
+class TestGetClipboardContent:
+    """Tests for get_clipboard_content function."""
+
+    @patch("src.launcher.pyperclip.paste")
+    def test_get_valid_content(self, mock_paste):
+        """Test getting valid clipboard content."""
+        mock_paste.return_value = "test content"
+        content = get_clipboard_content()
+        assert content == "test content"
+
+    @patch("src.launcher.pyperclip.paste")
+    def test_get_empty_clipboard(self, mock_paste, capsys):
+        """Test getting empty clipboard."""
+        mock_paste.return_value = ""
+
+        with pytest.raises(SystemExit):
+            get_clipboard_content()
+
+        captured = capsys.readouterr()
+        assert "テキストが取得できません" in captured.out
+
+    @patch("src.launcher.pyperclip.paste")
+    def test_get_clipboard_exception(self, mock_paste, capsys):
+        """Test clipboard read exception."""
+        mock_paste.side_effect = Exception("Clipboard error")
+
+        with pytest.raises(SystemExit):
+            get_clipboard_content()
+
+        captured = capsys.readouterr()
+        assert "エラー: クリップボードの読み取りに失敗しました" in captured.out
+
+
+class TestSaveToTempFile:
+    """Tests for save_to_temp_file function."""
+
+    def test_save_content(self, tmp_path):
+        """Test saving content to temp file."""
+        temp_file = tmp_path / "test.txt"
+        content = "test content\nline 2"
+
+        save_to_temp_file(content, temp_file)
+
+        assert temp_file.exists()
+        assert temp_file.read_text(encoding="utf-8") == content
+
+    def test_save_creates_directory(self, tmp_path):
+        """Test that parent directories are created."""
+        temp_file = tmp_path / "subdir" / "test.txt"
+        content = "test content"
+
+        save_to_temp_file(content, temp_file)
+
+        assert temp_file.exists()
+        assert temp_file.read_text(encoding="utf-8") == content
+
+    def test_save_utf8_without_bom(self, tmp_path):
+        """Test that file is saved as UTF-8 without BOM."""
+        temp_file = tmp_path / "test.txt"
+        content = "日本語テスト"
+
+        save_to_temp_file(content, temp_file)
+
+        # Read raw bytes to check for BOM
+        raw_bytes = temp_file.read_bytes()
+        # UTF-8 BOM is EF BB BF
+        assert not raw_bytes.startswith(b"\xef\xbb\xbf")
+        # Content should be readable as UTF-8
+        assert temp_file.read_text(encoding="utf-8") == content
+
+
+class TestMatchPatterns:
+    """Tests for match_patterns function."""
+
+    def test_single_match(self):
+        """Test matching a single pattern."""
+        content = "https://example.com"
+        patterns = [
+            {"name": "URL", "regex": r"^https?://.*", "command": "start chrome"},
+            {"name": "Email", "regex": r"^\w+@\w+\.\w+$", "command": "start outlook"},
+        ]
+
+        matched = match_patterns(content, patterns)
+        assert len(matched) == 1
+        assert matched[0]["name"] == "URL"
+
+    def test_multiple_matches(self):
+        """Test matching multiple patterns."""
+        content = "#123 is a GitHub issue"
+        patterns = [
+            {"name": "GitHub Issue", "regex": r"#\d+", "command": "notepad"},
+            {"name": "Contains text", "regex": r"GitHub", "command": "notepad"},
+        ]
+
+        matched = match_patterns(content, patterns)
+        assert len(matched) == 2
+
+    def test_no_matches(self):
+        """Test when no patterns match."""
+        content = "random text"
+        patterns = [
+            {"name": "URL", "regex": r"^https?://.*", "command": "start chrome"},
+        ]
+
+        matched = match_patterns(content, patterns)
+        assert len(matched) == 0
+
+    def test_invalid_regex(self, capsys):
+        """Test handling of invalid regex patterns."""
+        content = "test"
+        patterns = [
+            {"name": "Invalid", "regex": r"[invalid(regex", "command": "notepad"},
+            {"name": "Valid", "regex": r"test", "command": "notepad"},
+        ]
+
+        matched = match_patterns(content, patterns)
+        captured = capsys.readouterr()
+
+        # Should warn about invalid regex
+        assert "警告: 無効な正規表現をスキップしました" in captured.out
+        # Should still match the valid pattern
+        assert len(matched) == 1
+        assert matched[0]["name"] == "Valid"
+
+
+class TestDisplayTUI:
+    """Tests for display_tui function."""
+
+    def test_display_short_content(self, capsys):
+        """Test displaying short clipboard content."""
+        content = "Short line"
+        patterns = [
+            {"name": "Pattern 1", "regex": ".*", "command": "cmd1"},
+            {"name": "Pattern 2", "regex": ".*", "command": "cmd2"},
+        ]
+
+        display_tui(content, patterns)
+        captured = capsys.readouterr()
+
+        assert "クリップボード内容:" in captured.out
+        assert "Short line" in captured.out
+        assert "a: Pattern 1" in captured.out
+        assert "b: Pattern 2" in captured.out
+        assert "選択してください (a-b, ESC: 終了):" in captured.out
+
+    def test_display_truncates_long_lines(self, capsys):
+        """Test that long lines are truncated to 80 characters."""
+        content = "a" * 100
+        patterns = [{"name": "Pattern 1", "regex": ".*", "command": "cmd1"}]
+
+        display_tui(content, patterns)
+        captured = capsys.readouterr()
+
+        # Should show 80 chars plus "..."
+        assert ("a" * 80 + "...") in captured.out
+
+    def test_display_shows_only_first_3_lines(self, capsys):
+        """Test that only first 3 lines are shown."""
+        content = "line1\nline2\nline3\nline4\nline5"
+        patterns = [{"name": "Pattern 1", "regex": ".*", "command": "cmd1"}]
+
+        display_tui(content, patterns)
+        captured = capsys.readouterr()
+
+        assert "line1" in captured.out
+        assert "line2" in captured.out
+        assert "line3" in captured.out
+        assert "line4" not in captured.out
+        assert "line5" not in captured.out
+
+
+class TestExecuteCommand:
+    """Tests for execute_command function."""
+
+    @patch("src.launcher.subprocess.run")
+    def test_execute_with_placeholder(self, mock_run, tmp_path):
+        """Test executing command with placeholder replacement."""
+        temp_file = tmp_path / "test.txt"
+        temp_file.write_text("content")
+
+        command = "notepad.exe {CLIPBOARD_FILE}"
+        execute_command(command, temp_file)
+
+        expected_command = f"notepad.exe {temp_file.resolve()}"
+        mock_run.assert_called_once_with(expected_command, shell=True, check=False)
+
+    @patch("src.launcher.subprocess.run")
+    def test_execute_without_placeholder(self, mock_run, tmp_path):
+        """Test executing command without placeholder."""
+        temp_file = tmp_path / "test.txt"
+        command = "echo hello"
+
+        execute_command(command, temp_file)
+
+        mock_run.assert_called_once_with("echo hello", shell=True, check=False)
+
+    @patch("src.launcher.subprocess.run")
+    def test_execute_multiple_placeholders(self, mock_run, tmp_path):
+        """Test executing command with multiple placeholders."""
+        temp_file = tmp_path / "test.txt"
+        temp_file.write_text("content")
+
+        command = "python.exe script.py --input {CLIPBOARD_FILE} --output {CLIPBOARD_FILE}.result"
+        execute_command(command, temp_file)
+
+        expected_path = str(temp_file.resolve())
+        expected_command = f"python.exe script.py --input {expected_path} --output {expected_path}.result"
+        mock_run.assert_called_once_with(expected_command, shell=True, check=False)
+
+    @patch("src.launcher.subprocess.run")
+    def test_execute_command_exception(self, mock_run, tmp_path, capsys):
+        """Test handling of command execution exception."""
+        temp_file = tmp_path / "test.txt"
+        mock_run.side_effect = Exception("Command failed")
+
+        command = "invalid_command {CLIPBOARD_FILE}"
+        execute_command(command, temp_file)
+
+        captured = capsys.readouterr()
+        assert "エラー: コマンドの実行に失敗しました" in captured.out
+
+
+class TestGetUserChoice:
+    """Tests for get_user_choice function."""
+
+    @patch("src.launcher.msvcrt")
+    def test_select_first_option(self, mock_msvcrt):
+        """Test selecting first option with 'a' key."""
+        mock_msvcrt.getch.return_value = b"a"
+
+        choice = get_user_choice(3)
+        assert choice == 0
+
+    @patch("src.launcher.msvcrt")
+    def test_select_middle_option(self, mock_msvcrt):
+        """Test selecting middle option with 'b' key."""
+        mock_msvcrt.getch.return_value = b"b"
+
+        choice = get_user_choice(3)
+        assert choice == 1
+
+    @patch("src.launcher.msvcrt")
+    def test_esc_returns_none(self, mock_msvcrt):
+        """Test that ESC key returns None."""
+        mock_msvcrt.getch.return_value = b"\x1b"
+
+        choice = get_user_choice(3)
+        assert choice is None
+
+    @patch("src.launcher.msvcrt")
+    def test_invalid_key_retry(self, mock_msvcrt):
+        """Test that invalid keys are ignored and retry occurs."""
+        # First invalid key '1', then valid 'a'
+        mock_msvcrt.getch.side_effect = [b"1", b"a"]
+
+        choice = get_user_choice(3)
+        assert choice == 0
+        assert mock_msvcrt.getch.call_count == 2
+
+    @patch("src.launcher.msvcrt")
+    def test_out_of_range_retry(self, mock_msvcrt):
+        """Test that out-of-range keys are ignored."""
+        # 'd' is index 3, but we only have 2 patterns (0-1)
+        mock_msvcrt.getch.side_effect = [b"d", b"a"]
+
+        choice = get_user_choice(2)
+        assert choice == 0
+        assert mock_msvcrt.getch.call_count == 2
+
+
+class TestIntegration:
+    """Integration tests for the launcher."""
+
+    def test_full_workflow_with_match(self, tmp_path):
+        """Test complete workflow with successful pattern match."""
+        # Create config file
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(
+            f"""
+clipboard_temp_file = "{tmp_path / "clipboard.txt"}"
+
+[[patterns]]
+name = "Test Pattern"
+regex = "test.*content"
+command = "echo {{CLIPBOARD_FILE}}"
+"""
+        )
+
+        # Load config
+        config = load_config(config_file)
+        assert config["clipboard_temp_file"] == str(tmp_path / "clipboard.txt")
+
+        # Simulate clipboard content
+        content = "test clipboard content"
+
+        # Save to temp file
+        temp_file = Path(config["clipboard_temp_file"])
+        save_to_temp_file(content, temp_file)
+        assert temp_file.exists()
+
+        # Match patterns
+        matched = match_patterns(content, config["patterns"])
+        assert len(matched) == 1
+        assert matched[0]["name"] == "Test Pattern"
+
+    def test_no_match_workflow(self, tmp_path):
+        """Test workflow when no patterns match."""
+        # Create config file
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(
+            f"""
+clipboard_temp_file = "{tmp_path / "clipboard.txt"}"
+
+[[patterns]]
+name = "URL Pattern"
+regex = "^https?://.*"
+command = "echo {{CLIPBOARD_FILE}}"
+"""
+        )
+
+        config = load_config(config_file)
+        content = "just some text"
+
+        matched = match_patterns(content, config["patterns"])
+        assert len(matched) == 0
