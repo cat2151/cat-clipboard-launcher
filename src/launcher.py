@@ -1,5 +1,6 @@
 """Clipboard launcher main script."""
 
+import argparse
 import re
 import subprocess
 import sys
@@ -192,15 +193,12 @@ def execute_command(command: str, temp_file_path: Path) -> None:
         print(f"\nエラー: コマンドの実行に失敗しました: {e}")
 
 
-def main(config_path: Path | None = None) -> None:
+def main(config_path: Path) -> None:
     """Main entry point for clipboard launcher.
 
     Args:
-        config_path: Optional path to config file. If None, uses config.toml in script directory
+        config_path: Path to config file (required)
     """
-    # Determine config file path
-    if config_path is None:
-        config_path = Path(__file__).parent / "config.toml"
 
     # Load configuration
     config = load_config(config_path)
@@ -258,10 +256,14 @@ def main(config_path: Path | None = None) -> None:
 
 
 if __name__ == "__main__":
-    # Support command-line argument for config path
-    if len(sys.argv) > 1:
-        config_path = Path(sys.argv[1])
-    else:
-        config_path = None
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Clipboard launcher - Launch applications based on clipboard content")
+    parser.add_argument(
+        "--config-filename",
+        type=Path,
+        required=True,
+        help="Path to the TOML configuration file (required)",
+    )
+    args = parser.parse_args()
 
-    main(config_path)
+    main(args.config_filename)

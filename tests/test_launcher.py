@@ -11,6 +11,7 @@ from src.launcher import (
     get_clipboard_content,
     get_user_choice,
     load_config,
+    main,
     match_patterns,
     save_to_temp_file,
 )
@@ -385,3 +386,51 @@ command = "echo {{CLIPBOARD_FILE}}"
 
         matched = match_patterns(content, config["patterns"])
         assert len(matched) == 0
+
+
+class TestArgumentParsing:
+    """Tests for command-line argument parsing."""
+
+    def test_main_requires_config_path(self, tmp_path, capsys):
+        """Test that main() requires a config_path argument."""
+        # Create a minimal valid config
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(
+            f"""
+clipboard_temp_file = "{tmp_path / "clipboard.txt"}"
+
+[[patterns]]
+name = "Test"
+regex = "test"
+command = "echo test"
+"""
+        )
+
+        # Mock clipboard to have content
+        with patch("src.launcher.pyperclip.paste") as mock_paste:
+            mock_paste.return_value = "test content"
+
+            # Mock get_user_choice to return None (ESC key) to avoid hanging
+            with patch("src.launcher.get_user_choice") as mock_choice:
+                mock_choice.return_value = None
+
+                # Call main with config_path - should not raise an error
+                with pytest.raises(SystemExit) as exc_info:
+                    main(config_file)
+
+                # Should exit with 0 (ESC was pressed)
+                assert exc_info.value.code == 0
+
+    def test_main_function_signature(self):
+        """Test that main() function signature requires config_path."""
+        import inspect
+
+        sig = inspect.signature(main)
+        params = sig.parameters
+
+        # Should have exactly one parameter: config_path
+        assert len(params) == 1
+        assert "config_path" in params
+
+        # config_path should not have a default value
+        assert params["config_path"].default == inspect.Parameter.empty
