@@ -37,12 +37,17 @@ command = "notepad.exe {CLIPBOARD_FILE}"
 ## Running the Launcher
 
 ```bash
-# Use default config.toml in script directory
-python src/launcher.py
+# The --config-filename argument is required
+python src/launcher.py --config-filename path/to/config.toml
 
-# Use custom config file
-python src/launcher.py path/to/config.toml
+# Example with absolute path
+python src/launcher.py --config-filename C:/Users/username/config.toml
+
+# Example with relative path
+python src/launcher.py --config-filename ./config.toml
 ```
+
+**Note**: The `--config-filename` argument is required. There is no default configuration file.
 
 ## Usage Flow
 
