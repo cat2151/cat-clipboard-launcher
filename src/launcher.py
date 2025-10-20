@@ -8,6 +8,12 @@ from pathlib import Path
 
 import tomllib
 
+# ANSI color codes
+COLOR_RESET = "\033[0m"
+COLOR_GREEN = "\033[92m"  # Bright green for clipboard content
+COLOR_WHITE = "\033[97m"  # Bright white for clipboard content headers
+COLOR_BRIGHT_RED = "\033[91m"  # Bright red for pattern options
+
 # Windows-specific import
 try:
     import msvcrt
@@ -120,31 +126,33 @@ def display_tui(content: str, matched_patterns: list) -> None:
         matched_patterns: List of matched pattern dictionaries
     """
     # Display clipboard content (first 3 lines, max 80 chars each)
-    print("クリップボード内容:")
-    print("-" * 40)
+    # Using white for headers and green for content
+    print(f"{COLOR_WHITE}クリップボード内容:{COLOR_RESET}")
+    print(f"{COLOR_WHITE}{'-' * 40}{COLOR_RESET}")
 
     lines = content.split("\n")
     for i, line in enumerate(lines[:3]):
         if len(line) > 80:
-            print(line[:80] + "...")
+            print(f"{COLOR_GREEN}{line[:80]}...{COLOR_RESET}")
         else:
-            print(line)
+            print(f"{COLOR_GREEN}{line}{COLOR_RESET}")
 
-    print("-" * 40)
+    print(f"{COLOR_WHITE}{'-' * 40}{COLOR_RESET}")
     print()
 
     # Display matched patterns
-    print("マッチしたパターン:")
+    # Using bright red for pattern options
+    print(f"{COLOR_WHITE}マッチしたパターン:{COLOR_RESET}")
     for i, pattern in enumerate(matched_patterns):
         letter = chr(ord("a") + i)
         name = pattern.get("name", "unknown")
-        print(f"{letter}: {name}")
+        print(f"{COLOR_BRIGHT_RED}{letter}: {name}{COLOR_RESET}")
 
     print()
 
     # Show prompt
     last_letter = chr(ord("a") + len(matched_patterns) - 1)
-    print(f"選択してください (a-{last_letter}, ESC: 終了): ", end="", flush=True)
+    print(f"{COLOR_WHITE}選択してください (a-{last_letter}, ESC: 終了): {COLOR_RESET}", end="", flush=True)
 
 
 def get_user_choice(num_patterns: int) -> int | None:
