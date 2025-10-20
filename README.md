@@ -81,6 +81,12 @@ command = "start chrome.exe {CLIPBOARD_FILE}"
 name = "GitHub Issue"
 regex = "#\\d+"
 command = "notepad.exe {CLIPBOARD_FILE}"
+
+[[patterns]]
+name = "Custom Script with Output"
+regex = "^PROCESS:"
+command = "python.exe process.py --input {CLIPBOARD_FILE} --output {OUTPUT_FILE}"
+output_file = "C:/temp/output.txt"
 ```
 
 ### Configuration Fields
@@ -89,7 +95,10 @@ command = "notepad.exe {CLIPBOARD_FILE}"
 - `patterns`: Array of pattern definitions
   - `name`: Display name for the pattern
   - `regex`: Regular expression to match clipboard content
-  - `command`: Command to execute (use `{CLIPBOARD_FILE}` as placeholder)
+  - `command`: Command to execute
+    - Use `{CLIPBOARD_FILE}` placeholder for input file path
+    - Use `{OUTPUT_FILE}` placeholder for output file path (optional)
+  - `output_file`: (Optional) Full path to output file for applications that need separate input/output files
 
 ## Running the Launcher
 

@@ -29,4 +29,5 @@ command = "notepad.exe {CLIPBOARD_FILE}"
 [[patterns]]
 name = "カスタムスクリプト"
 regex = "^CUSTOM:"
-command = "python.exe process.py --input {CLIPBOARD_FILE} --output {CLIPBOARD_FILE}.result"
+command = "python.exe process.py --input {CLIPBOARD_FILE} --output {OUTPUT_FILE}"
+output_file = "C:/temp/clipboard_output.txt"

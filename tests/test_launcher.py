@@ -271,6 +271,49 @@ class TestExecuteCommand:
         mock_run.assert_called_once_with(expected_command, shell=True, check=False)
 
     @patch("src.launcher.subprocess.run")
+    def test_execute_with_output_file(self, mock_run, tmp_path):
+        """Test executing command with OUTPUT_FILE placeholder."""
+        temp_file = tmp_path / "input.txt"
+        temp_file.write_text("content")
+        output_file = tmp_path / "output.txt"
+
+        command = "python.exe script.py --input {CLIPBOARD_FILE} --output {OUTPUT_FILE}"
+        execute_command(command, temp_file, output_file)
+
+        expected_input = str(temp_file.resolve())
+        expected_output = str(output_file.resolve())
+        expected_command = f"python.exe script.py --input {expected_input} --output {expected_output}"
+        mock_run.assert_called_once_with(expected_command, shell=True, check=False)
+
+    @patch("src.launcher.subprocess.run")
+    def test_execute_with_output_file_none(self, mock_run, tmp_path):
+        """Test executing command without output file (backward compatibility)."""
+        temp_file = tmp_path / "input.txt"
+        temp_file.write_text("content")
+
+        command = "notepad.exe {CLIPBOARD_FILE}"
+        execute_command(command, temp_file, None)
+
+        expected_path = str(temp_file.resolve())
+        expected_command = f"notepad.exe {expected_path}"
+        mock_run.assert_called_once_with(expected_command, shell=True, check=False)
+
+    @patch("src.launcher.subprocess.run")
+    def test_execute_multiple_output_placeholders(self, mock_run, tmp_path):
+        """Test executing command with multiple OUTPUT_FILE placeholders."""
+        temp_file = tmp_path / "input.txt"
+        temp_file.write_text("content")
+        output_file = tmp_path / "output.txt"
+
+        command = "app.exe {CLIPBOARD_FILE} {OUTPUT_FILE} --log {OUTPUT_FILE}.log"
+        execute_command(command, temp_file, output_file)
+
+        expected_input = str(temp_file.resolve())
+        expected_output = str(output_file.resolve())
+        expected_command = f"app.exe {expected_input} {expected_output} --log {expected_output}.log"
+        mock_run.assert_called_once_with(expected_command, shell=True, check=False)
+
+    @patch("src.launcher.subprocess.run")
     def test_execute_command_exception(self, mock_run, tmp_path, capsys):
         """Test handling of command execution exception."""
         temp_file = tmp_path / "test.txt"
@@ -386,6 +429,41 @@ command = "echo {{CLIPBOARD_FILE}}"
 
         matched = match_patterns(content, config["patterns"])
         assert len(matched) == 0
+
+    def test_output_file_workflow(self, tmp_path):
+        """Test complete workflow with output_file configuration."""
+        # Create config file with output_file
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(
+            f"""
+clipboard_temp_file = "{tmp_path / "clipboard.txt"}"
+
+[[patterns]]
+name = "Process Pattern"
+regex = "^PROCESS:"
+command = "echo {{CLIPBOARD_FILE}} {{OUTPUT_FILE}}"
+output_file = "{tmp_path / "output.txt"}"
+"""
+        )
+
+        # Load config
+        config = load_config(config_file)
+        assert "output_file" in config["patterns"][0]
+        assert config["patterns"][0]["output_file"] == str(tmp_path / "output.txt")
+
+        # Simulate clipboard content
+        content = "PROCESS: test data"
+
+        # Save to temp file
+        temp_file = Path(config["clipboard_temp_file"])
+        save_to_temp_file(content, temp_file)
+        assert temp_file.exists()
+
+        # Match patterns
+        matched = match_patterns(content, config["patterns"])
+        assert len(matched) == 1
+        assert matched[0]["name"] == "Process Pattern"
+        assert "output_file" in matched[0]
 
 
 class TestArgumentParsing:

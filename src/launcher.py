@@ -175,16 +175,22 @@ def get_user_choice(num_patterns: int) -> int | None:
         # Invalid input, continue waiting
 
 
-def execute_command(command: str, temp_file_path: Path) -> None:
+def execute_command(command: str, temp_file_path: Path, output_file_path: Path | None = None) -> None:
     """Execute the selected command with placeholder replacement.
 
     Args:
-        command: Command string with {CLIPBOARD_FILE} placeholder
-        temp_file_path: Path to temporary file
+        command: Command string with {CLIPBOARD_FILE} and {OUTPUT_FILE} placeholders
+        temp_file_path: Path to temporary file (input)
+        output_file_path: Path to output file (optional)
     """
     # Replace placeholder with actual temp file path
     full_path = str(temp_file_path.resolve())
     command_with_path = command.replace("{CLIPBOARD_FILE}", full_path)
+
+    # Replace output file placeholder if provided
+    if output_file_path is not None:
+        output_path = str(output_file_path.resolve())
+        command_with_path = command_with_path.replace("{OUTPUT_FILE}", output_path)
 
     try:
         # Use shell=True for Windows command execution
@@ -252,7 +258,12 @@ def main(config_path: Path) -> None:
         sys.exit(1)
 
     print(f"\n実行中: {selected_pattern.get('name', 'unknown')}")
-    execute_command(command, temp_file_path)
+
+    # Get output file path if specified
+    output_file_str = selected_pattern.get("output_file")
+    output_file_path = Path(output_file_str) if output_file_str else None
+
+    execute_command(command, temp_file_path, output_file_path)
 
 
 if __name__ == "__main__":
