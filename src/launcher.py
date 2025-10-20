@@ -175,6 +175,43 @@ def get_user_choice(num_patterns: int) -> int | None:
         # Invalid input, continue waiting
 
 
+def replace_placeholders(text: str, temp_file_path: Path) -> str:
+    """Replace placeholders in text with actual values.
+
+    Args:
+        text: Text containing {CLIPBOARD_FILE} placeholder
+        temp_file_path: Path to temporary file
+
+    Returns:
+        Text with placeholders replaced
+    """
+    full_path = str(temp_file_path.resolve())
+    return text.replace("{CLIPBOARD_FILE}", full_path)
+
+
+def write_output_to_clipboard(output_file_path: Path) -> None:
+    """Read output file and write its content to clipboard.
+
+    Args:
+        output_file_path: Path to output file
+
+    Raises:
+        SystemExit: If file read fails
+    """
+    try:
+        if not output_file_path.exists():
+            print(f"警告: 出力ファイルが見つかりません ({output_file_path})")
+            return
+
+        with open(output_file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        pyperclip.copy(content)
+        print(f"出力をクリップボードに書き戻しました ({len(content)} 文字)")
+    except Exception as e:
+        print(f"警告: 出力ファイルの読み取りまたはクリップボードへの書き込みに失敗しました: {e}")
+
+
 def execute_command(command: str, temp_file_path: Path) -> None:
     """Execute the selected command with placeholder replacement.
 
@@ -183,8 +220,7 @@ def execute_command(command: str, temp_file_path: Path) -> None:
         temp_file_path: Path to temporary file
     """
     # Replace placeholder with actual temp file path
-    full_path = str(temp_file_path.resolve())
-    command_with_path = command.replace("{CLIPBOARD_FILE}", full_path)
+    command_with_path = replace_placeholders(command, temp_file_path)
 
     try:
         # Use shell=True for Windows command execution
@@ -253,6 +289,16 @@ def main(config_path: Path) -> None:
 
     print(f"\n実行中: {selected_pattern.get('name', 'unknown')}")
     execute_command(command, temp_file_path)
+
+    # Handle output file if specified and write_output_to_clipboard is enabled
+    write_to_clipboard = config.get("write_output_to_clipboard", True)
+    output_file_pattern = selected_pattern.get("output_file")
+
+    if write_to_clipboard and output_file_pattern:
+        output_file_path = Path(replace_placeholders(output_file_pattern, temp_file_path))
+        write_output_to_clipboard(output_file_path)
+
+    sys.exit(0)
 
 
 if __name__ == "__main__":

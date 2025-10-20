@@ -5,6 +5,10 @@
 # Windowsパス形式（スラッシュまたはバックスラッシュ）
 clipboard_temp_file = "C:/temp/clipboard_content.txt"
 
+# アプリケーション出力をクリップボードに書き戻すかどうか（デフォルト: true）
+# When true, if a pattern specifies output_file, the content will be written back to clipboard
+write_output_to_clipboard = true
+
 # パターン定義（配列形式）
 [[patterns]]
 name = "URL"
@@ -30,3 +34,4 @@ command = "notepad.exe {CLIPBOARD_FILE}"
 name = "カスタムスクリプト"
 regex = "^CUSTOM:"
 command = "python.exe process.py --input {CLIPBOARD_FILE} --output {CLIPBOARD_FILE}.result"
+output_file = "{CLIPBOARD_FILE}.result"  # Optional: if specified, content is written back to clipboard

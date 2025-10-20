@@ -71,6 +71,10 @@ Create or edit `config.toml` in the same directory as the launcher script:
 # Path where clipboard content will be saved temporarily
 clipboard_temp_file = "C:/temp/clipboard_content.txt"
 
+# Write application output back to clipboard (default: true)
+# When true, if a pattern specifies output_file, content will be written back to clipboard
+write_output_to_clipboard = true
+
 # Pattern definitions
 [[patterns]]
 name = "URL"
@@ -81,15 +85,23 @@ command = "start chrome.exe {CLIPBOARD_FILE}"
 name = "GitHub Issue"
 regex = "#\\d+"
 command = "notepad.exe {CLIPBOARD_FILE}"
+
+[[patterns]]
+name = "Text Filter"
+regex = "^FILTER:"
+command = "python.exe filter.py --input {CLIPBOARD_FILE} --output {CLIPBOARD_FILE}.result"
+output_file = "{CLIPBOARD_FILE}.result"  # Output will be written back to clipboard
 ```
 
 ### Configuration Fields
 
 - `clipboard_temp_file`: Full path to temporary file for clipboard content
+- `write_output_to_clipboard`: (Optional, default: `true`) When `true`, if a pattern specifies `output_file`, the content will be written back to clipboard after command execution
 - `patterns`: Array of pattern definitions
   - `name`: Display name for the pattern
   - `regex`: Regular expression to match clipboard content
   - `command`: Command to execute (use `{CLIPBOARD_FILE}` as placeholder)
+  - `output_file`: (Optional) Path to output file. If specified and `write_output_to_clipboard` is `true`, the content will be written back to clipboard. Can use `{CLIPBOARD_FILE}` placeholder
 
 ## Running the Launcher
 
