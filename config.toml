@@ -2,8 +2,8 @@
 # クリップボードランチャー設定ファイル
 
 # 一時ファイルパス（クリップボード内容を保存）
-# Windowsパス形式（スラッシュまたはバックスラッシュ）
-clipboard_temp_file = "C:/temp/clipboard_content.txt"
+# 相対パスまたは絶対パス
+clipboard_temp_file = "./clipboard_content.txt"
 
 # パターン定義（配列形式）
 [[patterns]]
