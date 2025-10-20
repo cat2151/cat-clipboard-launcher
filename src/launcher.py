@@ -8,6 +8,10 @@ from pathlib import Path
 
 import tomllib
 
+# ANSI color codes
+GRAY = "\033[90m"
+RESET = "\033[0m"
+
 # Windows-specific import
 try:
     import msvcrt
@@ -120,8 +124,8 @@ def display_tui(content: str, matched_patterns: list) -> None:
         matched_patterns: List of matched pattern dictionaries
     """
     # Display clipboard content (first 3 lines, max 80 chars each)
-    print("クリップボード内容:")
-    print("-" * 40)
+    print(f"{GRAY}クリップボード内容:{RESET}")
+    print(f"{GRAY}{'-' * 40}{RESET}")
 
     lines = content.split("\n")
     for i, line in enumerate(lines[:3]):
@@ -130,11 +134,11 @@ def display_tui(content: str, matched_patterns: list) -> None:
         else:
             print(line)
 
-    print("-" * 40)
+    print(f"{GRAY}{'-' * 40}{RESET}")
     print()
 
     # Display matched patterns
-    print("マッチしたパターン:")
+    print(f"{GRAY}マッチしたパターン:{RESET}")
     for i, pattern in enumerate(matched_patterns):
         letter = chr(ord("a") + i)
         name = pattern.get("name", "unknown")
