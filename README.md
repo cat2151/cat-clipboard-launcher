@@ -65,7 +65,7 @@ pip install -r requirements.txt
 
 ## Configuration
 
-Create or edit `config.toml` in the same directory as the launcher script:
+Create or edit `config.toml` for your specific needs. You can use `examples/config.toml` as a reference template:
 
 ```toml
 # Path where clipboard content will be saved temporarily
