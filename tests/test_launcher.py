@@ -324,10 +324,11 @@ class TestExecuteCommand:
 
         captured = capsys.readouterr()
         assert "警告: コマンドに{OUTPUT_FILE}が含まれていますが、output_fileが設定されていません" in captured.out
+        assert "プレースホルダーは置換されずそのまま実行されます" in captured.out
 
         # Command should still be executed with unreplaced placeholder
         expected_input = str(temp_file.resolve())
-        expected_command = f"python.exe script.py --input {expected_input} --output {{OUTPUT_FILE}}"
+        expected_command = "python.exe script.py --input " + expected_input + " --output {OUTPUT_FILE}"
         mock_run.assert_called_once_with(expected_command, shell=True, check=False)
 
     @patch("src.launcher.subprocess.run")

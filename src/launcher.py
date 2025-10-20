@@ -194,6 +194,7 @@ def execute_command(command: str, temp_file_path: Path, output_file_path: Path |
     elif "{OUTPUT_FILE}" in command_with_path:
         # Warn if OUTPUT_FILE placeholder is used but not configured
         print("\n警告: コマンドに{OUTPUT_FILE}が含まれていますが、output_fileが設定されていません")
+        print("プレースホルダーは置換されずそのまま実行されます")
 
     try:
         # Use shell=True for Windows command execution
