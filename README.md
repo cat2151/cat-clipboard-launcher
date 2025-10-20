@@ -81,6 +81,13 @@ command = "start chrome.exe {CLIPBOARD_FILE}"
 name = "GitHub Issue"
 regex = "#\\d+"
 command = "notepad.exe {CLIPBOARD_FILE}"
+
+[[patterns]]
+name = "Text Filter"
+regex = "^FILTER:"
+command = "python.exe filter.py --input {CLIPBOARD_FILE} --output {CLIPBOARD_FILE}.result"
+output_file = "{CLIPBOARD_FILE}.result"
+write_output_to_clipboard = true  # Output will be written back to clipboard
 ```
 
 ### Configuration Fields
@@ -90,6 +97,8 @@ command = "notepad.exe {CLIPBOARD_FILE}"
   - `name`: Display name for the pattern
   - `regex`: Regular expression to match clipboard content
   - `command`: Command to execute (use `{CLIPBOARD_FILE}` as placeholder)
+  - `output_file`: (Optional) Path to output file. Can use `{CLIPBOARD_FILE}` placeholder
+  - `write_output_to_clipboard`: (Optional, default: `false`) When `true` and `output_file` is specified, the content will be written back to clipboard after command execution
 
 ## Running the Launcher
 

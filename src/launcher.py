@@ -8,6 +8,14 @@ from pathlib import Path
 
 import tomllib
 
+# ANSI color codes
+COLOR_RESET = "\033[0m"
+COLOR_GREEN = "\033[92m"  # Bright green for clipboard content
+COLOR_WHITE = "\033[97m"  # Bright white for headers and prompts
+COLOR_BRIGHT_RED = "\033[91m"  # Bright red for pattern options
+GRAY = "\033[90m"
+RESET = "\033[0m"
+
 # Windows-specific import
 try:
     import msvcrt
@@ -177,8 +185,8 @@ def display_tui(content: str, matched_patterns: list) -> None:
         matched_patterns: List of matched pattern dictionaries
     """
     # Display clipboard content (first 3 lines, max 80 chars each)
-    print("クリップボード内容:")
-    print("-" * 40)
+    print(f"{GRAY}クリップボード内容:{RESET}")
+    print(f"{GRAY}{'-' * 40}{RESET}")
 
     lines = content.split("\n")
     for i, line in enumerate(lines[:3]):
@@ -198,21 +206,21 @@ def display_tui(content: str, matched_patterns: list) -> None:
         else:
             print(colorized_line)
 
-    print("-" * 40)
+    print(f"{GRAY}{'-' * 40}{RESET}")
     print()
 
     # Display matched patterns
-    print("マッチしたパターン:")
+    print(f"{GRAY}マッチしたパターン:{RESET}")
     for i, pattern in enumerate(matched_patterns):
         letter = chr(ord("a") + i)
         name = pattern.get("name", "unknown")
-        print(f"{letter}: {name}")
+        print(f"{COLOR_BRIGHT_RED}{letter}: {name}{COLOR_RESET}")
 
     print()
 
     # Show prompt
     last_letter = chr(ord("a") + len(matched_patterns) - 1)
-    print(f"選択してください (a-{last_letter}, ESC: 終了): ", end="", flush=True)
+    print(f"{COLOR_WHITE}選択してください (a-{last_letter}, ESC: 終了): {COLOR_RESET}", end="", flush=True)
 
 
 def get_user_choice(num_patterns: int) -> int | None:
@@ -243,6 +251,40 @@ def get_user_choice(num_patterns: int) -> int | None:
         # Invalid input, continue waiting
 
 
+def replace_placeholders(text: str, temp_file_path: Path) -> str:
+    """Replace placeholders in text with actual values.
+
+    Args:
+        text: Text containing {CLIPBOARD_FILE} placeholder
+        temp_file_path: Path to temporary file
+
+    Returns:
+        Text with placeholders replaced
+    """
+    full_path = str(temp_file_path.resolve())
+    return text.replace("{CLIPBOARD_FILE}", full_path)
+
+
+def write_output_to_clipboard(output_file_path: Path) -> None:
+    """Read output file and write its content to clipboard.
+
+    Args:
+        output_file_path: Path to output file
+    """
+    try:
+        if not output_file_path.exists():
+            print(f"警告: 出力ファイルが見つかりません ({output_file_path})")
+            return
+
+        with open(output_file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        pyperclip.copy(content)
+        print(f"出力をクリップボードに書き戻しました ({len(content)} 文字)")
+    except Exception as e:
+        print(f"警告: 出力ファイルの読み取りまたはクリップボードへの書き込みに失敗しました: {e}")
+
+
 def execute_command(command: str, temp_file_path: Path) -> None:
     """Execute the selected command with placeholder replacement.
 
@@ -251,8 +293,7 @@ def execute_command(command: str, temp_file_path: Path) -> None:
         temp_file_path: Path to temporary file
     """
     # Replace placeholder with actual temp file path
-    full_path = str(temp_file_path.resolve())
-    command_with_path = command.replace("{CLIPBOARD_FILE}", full_path)
+    command_with_path = replace_placeholders(command, temp_file_path)
 
     try:
         # Use shell=True for Windows command execution
@@ -321,6 +362,16 @@ def main(config_path: Path) -> None:
 
     print(f"\n実行中: {selected_pattern.get('name', 'unknown')}")
     execute_command(command, temp_file_path)
+
+    # Handle output file if specified and write_output_to_clipboard is enabled
+    write_to_clipboard = selected_pattern.get("write_output_to_clipboard", False)
+    output_file_pattern = selected_pattern.get("output_file")
+
+    if write_to_clipboard and output_file_pattern:
+        output_file_path = Path(replace_placeholders(output_file_pattern, temp_file_path))
+        write_output_to_clipboard(output_file_path)
+
+    sys.exit(0)
 
 
 if __name__ == "__main__":
