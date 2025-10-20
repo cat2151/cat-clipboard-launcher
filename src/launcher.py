@@ -148,7 +148,7 @@ def display_tui(content: str, matched_patterns: list) -> None:
 
     # Show prompt
     last_letter = chr(ord("a") + len(matched_patterns) - 1)
-    print(f"{GRAY}選択してください (a-{last_letter}, ESC: 終了): {RESET}", end="", flush=True)
+    print(f"選択してください (a-{last_letter}, ESC: 終了): ", end="", flush=True)
 
 
 def get_user_choice(num_patterns: int) -> int | None:
