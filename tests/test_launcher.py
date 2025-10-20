@@ -13,7 +13,9 @@ from src.launcher import (
     load_config,
     main,
     match_patterns,
+    replace_placeholders,
     save_to_temp_file,
+    write_output_to_clipboard,
 )
 
 
@@ -451,3 +453,245 @@ command = "echo test"
 
         # config_path should not have a default value
         assert params["config_path"].default == inspect.Parameter.empty
+
+
+class TestReplacePlaceholders:
+    """Tests for replace_placeholders function."""
+
+    def test_replace_single_placeholder(self, tmp_path):
+        """Test replacing single placeholder."""
+        temp_file = tmp_path / "test.txt"
+        text = "command {CLIPBOARD_FILE}"
+
+        result = replace_placeholders(text, temp_file)
+        assert result == f"command {temp_file.resolve()}"
+
+    def test_replace_multiple_placeholders(self, tmp_path):
+        """Test replacing multiple placeholders."""
+        temp_file = tmp_path / "test.txt"
+        text = "command --input {CLIPBOARD_FILE} --output {CLIPBOARD_FILE}.result"
+
+        result = replace_placeholders(text, temp_file)
+        expected = f"command --input {temp_file.resolve()} --output {temp_file.resolve()}.result"
+        assert result == expected
+
+    def test_replace_no_placeholder(self, tmp_path):
+        """Test when there's no placeholder to replace."""
+        temp_file = tmp_path / "test.txt"
+        text = "command without placeholder"
+
+        result = replace_placeholders(text, temp_file)
+        assert result == "command without placeholder"
+
+
+class TestWriteOutputToClipboard:
+    """Tests for write_output_to_clipboard function."""
+
+    @patch("src.launcher.pyperclip.copy")
+    def test_write_existing_file(self, mock_copy, tmp_path, capsys):
+        """Test writing existing output file to clipboard."""
+        output_file = tmp_path / "output.txt"
+        output_content = "This is the output content"
+        output_file.write_text(output_content, encoding="utf-8")
+
+        write_output_to_clipboard(output_file)
+
+        mock_copy.assert_called_once_with(output_content)
+        captured = capsys.readouterr()
+        assert "出力をクリップボードに書き戻しました" in captured.out
+        assert "26 文字" in captured.out
+
+    def test_write_nonexistent_file(self, tmp_path, capsys):
+        """Test handling of non-existent output file."""
+        output_file = tmp_path / "nonexistent.txt"
+
+        write_output_to_clipboard(output_file)
+
+        captured = capsys.readouterr()
+        assert "警告: 出力ファイルが見つかりません" in captured.out
+
+    @patch("src.launcher.pyperclip.copy")
+    def test_write_empty_file(self, mock_copy, tmp_path, capsys):
+        """Test writing empty output file to clipboard."""
+        output_file = tmp_path / "empty.txt"
+        output_file.write_text("", encoding="utf-8")
+
+        write_output_to_clipboard(output_file)
+
+        mock_copy.assert_called_once_with("")
+        captured = capsys.readouterr()
+        assert "出力をクリップボードに書き戻しました" in captured.out
+        assert "0 文字" in captured.out
+
+    @patch("src.launcher.pyperclip.copy")
+    def test_write_multiline_file(self, mock_copy, tmp_path, capsys):
+        """Test writing multiline output file to clipboard."""
+        output_file = tmp_path / "multiline.txt"
+        output_content = "Line 1\nLine 2\nLine 3"
+        output_file.write_text(output_content, encoding="utf-8")
+
+        write_output_to_clipboard(output_file)
+
+        mock_copy.assert_called_once_with(output_content)
+        captured = capsys.readouterr()
+        assert "出力をクリップボードに書き戻しました" in captured.out
+
+
+class TestOutputFileIntegration:
+    """Integration tests for output_file functionality."""
+
+    @patch("src.launcher.subprocess.run")
+    @patch("src.launcher.pyperclip.paste")
+    @patch("src.launcher.pyperclip.copy")
+    @patch("src.launcher.get_user_choice")
+    def test_output_file_written_to_clipboard_when_enabled(
+        self, mock_choice, mock_copy, mock_paste, mock_run, tmp_path
+    ):
+        """Test that output file is written to clipboard when enabled."""
+        # Create config with write_output_to_clipboard enabled at pattern level
+        config_file = tmp_path / "config.toml"
+        clipboard_temp = tmp_path / "clipboard.txt"
+
+        config_file.write_text(
+            f"""
+clipboard_temp_file = "{clipboard_temp}"
+
+[[patterns]]
+name = "Test Pattern"
+regex = "test"
+command = "echo test > {{CLIPBOARD_FILE}}.output"
+output_file = "{{CLIPBOARD_FILE}}.output"
+write_output_to_clipboard = true
+"""
+        )
+
+        # Mock clipboard content
+        mock_paste.return_value = "test content"
+
+        # Mock user selecting first pattern
+        mock_choice.return_value = 0
+
+        # Create the output file that would be created by the command
+        actual_output_file = Path(str(clipboard_temp.resolve()) + ".output")
+        actual_output_file.write_text("Output from command", encoding="utf-8")
+
+        # Run main
+        with pytest.raises(SystemExit):
+            main(config_file)
+
+        # Verify clipboard was updated with output content
+        mock_copy.assert_called_once_with("Output from command")
+
+    @patch("src.launcher.subprocess.run")
+    @patch("src.launcher.pyperclip.paste")
+    @patch("src.launcher.pyperclip.copy")
+    @patch("src.launcher.get_user_choice")
+    def test_output_file_not_written_when_disabled(self, mock_choice, mock_copy, mock_paste, mock_run, tmp_path):
+        """Test that output file is not written to clipboard when disabled."""
+        # Create config with write_output_to_clipboard disabled at pattern level
+        config_file = tmp_path / "config.toml"
+        clipboard_temp = tmp_path / "clipboard.txt"
+
+        config_file.write_text(
+            f"""
+clipboard_temp_file = "{clipboard_temp}"
+
+[[patterns]]
+name = "Test Pattern"
+regex = "test"
+command = "echo test"
+output_file = "{{CLIPBOARD_FILE}}.output"
+write_output_to_clipboard = false
+"""
+        )
+
+        # Mock clipboard content
+        mock_paste.return_value = "test content"
+
+        # Mock user selecting first pattern
+        mock_choice.return_value = 0
+
+        # Run main
+        with pytest.raises(SystemExit):
+            main(config_file)
+
+        # Verify clipboard was NOT updated
+        mock_copy.assert_not_called()
+
+    @patch("src.launcher.subprocess.run")
+    @patch("src.launcher.pyperclip.paste")
+    @patch("src.launcher.pyperclip.copy")
+    @patch("src.launcher.get_user_choice")
+    def test_no_output_file_specified(self, mock_choice, mock_copy, mock_paste, mock_run, tmp_path):
+        """Test that clipboard is not updated when no output_file is specified."""
+        # Create config without output_file
+        config_file = tmp_path / "config.toml"
+        clipboard_temp = tmp_path / "clipboard.txt"
+
+        config_file.write_text(
+            f"""
+clipboard_temp_file = "{clipboard_temp}"
+
+[[patterns]]
+name = "Test Pattern"
+regex = "test"
+command = "echo test"
+"""
+        )
+
+        # Mock clipboard content
+        mock_paste.return_value = "test content"
+
+        # Mock user selecting first pattern
+        mock_choice.return_value = 0
+
+        # Run main
+        with pytest.raises(SystemExit):
+            main(config_file)
+
+        # Verify clipboard was NOT updated (no output_file specified)
+        mock_copy.assert_not_called()
+
+    @patch("src.launcher.subprocess.run")
+    @patch("src.launcher.pyperclip.paste")
+    @patch("src.launcher.pyperclip.copy")
+    @patch("src.launcher.get_user_choice")
+    def test_default_write_output_to_clipboard_is_false(
+        self, mock_choice, mock_copy, mock_paste, mock_run, tmp_path, capsys
+    ):
+        """Test that write_output_to_clipboard defaults to false when not specified."""
+        # Create config WITHOUT write_output_to_clipboard setting
+        config_file = tmp_path / "config.toml"
+        clipboard_temp = tmp_path / "clipboard.txt"
+
+        config_file.write_text(
+            f"""
+clipboard_temp_file = "{clipboard_temp}"
+
+[[patterns]]
+name = "Test Pattern"
+regex = "test"
+command = "echo test"
+output_file = "{{CLIPBOARD_FILE}}.output"
+"""
+        )
+
+        # Mock clipboard content
+        mock_paste.return_value = "test content"
+
+        # Mock user selecting first pattern
+        mock_choice.return_value = 0
+
+        # Create the output file
+        actual_output_file = Path(str(clipboard_temp.resolve()) + ".output")
+        actual_output_file.write_text("Output from command", encoding="utf-8")
+
+        # Run main
+        with pytest.raises(SystemExit):
+            main(config_file)
+
+        # Should NOT write to clipboard (default is false)
+        captured = capsys.readouterr()
+        assert "出力をクリップボードに書き戻しました" not in captured.out
+        # Verify the copy was NOT called
+        mock_copy.assert_not_called()
