@@ -11,7 +11,7 @@ import tomllib
 # ANSI color codes
 COLOR_RESET = "\033[0m"
 COLOR_GREEN = "\033[92m"  # Bright green for clipboard content
-COLOR_WHITE = "\033[97m"  # Bright white for clipboard content headers
+COLOR_WHITE = "\033[97m"  # Bright white for headers and prompts
 COLOR_BRIGHT_RED = "\033[91m"  # Bright red for pattern options
 
 # Windows-specific import
