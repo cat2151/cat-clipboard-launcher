@@ -314,6 +314,23 @@ class TestExecuteCommand:
         mock_run.assert_called_once_with(expected_command, shell=True, check=False)
 
     @patch("src.launcher.subprocess.run")
+    def test_execute_output_placeholder_without_config(self, mock_run, tmp_path, capsys):
+        """Test warning when OUTPUT_FILE placeholder is used but not configured."""
+        temp_file = tmp_path / "input.txt"
+        temp_file.write_text("content")
+
+        command = "python.exe script.py --input {CLIPBOARD_FILE} --output {OUTPUT_FILE}"
+        execute_command(command, temp_file, None)
+
+        captured = capsys.readouterr()
+        assert "警告: コマンドに{OUTPUT_FILE}が含まれていますが、output_fileが設定されていません" in captured.out
+
+        # Command should still be executed with unreplaced placeholder
+        expected_input = str(temp_file.resolve())
+        expected_command = f"python.exe script.py --input {expected_input} --output {{OUTPUT_FILE}}"
+        mock_run.assert_called_once_with(expected_command, shell=True, check=False)
+
+    @patch("src.launcher.subprocess.run")
     def test_execute_command_exception(self, mock_run, tmp_path, capsys):
         """Test handling of command execution exception."""
         temp_file = tmp_path / "test.txt"

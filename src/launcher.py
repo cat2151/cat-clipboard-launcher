@@ -191,6 +191,9 @@ def execute_command(command: str, temp_file_path: Path, output_file_path: Path |
     if output_file_path is not None:
         output_path = str(output_file_path.resolve())
         command_with_path = command_with_path.replace("{OUTPUT_FILE}", output_path)
+    elif "{OUTPUT_FILE}" in command_with_path:
+        # Warn if OUTPUT_FILE placeholder is used but not configured
+        print("\n警告: コマンドに{OUTPUT_FILE}が含まれていますが、output_fileが設定されていません")
 
     try:
         # Use shell=True for Windows command execution
