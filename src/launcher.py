@@ -120,6 +120,63 @@ def match_patterns(content: str, patterns: list) -> list:
     return matched
 
 
+def colorize_matched_text(text: str, patterns: list) -> str:
+    """Colorize text based on regex pattern matches.
+
+    Args:
+        text: Text to colorize
+        patterns: List of pattern dictionaries with regex fields
+
+    Returns:
+        Text with ANSI color codes for matched portions
+    """
+    # ANSI color codes
+    COLOR_HIGHLIGHT = "\033[93m"  # Yellow for highlighting matches
+    COLOR_RESET = "\033[0m"  # Reset to default color
+
+    # Collect all match positions from all patterns
+    matches = []
+    for pattern in patterns:
+        try:
+            regex = pattern.get("regex", "")
+            for match in re.finditer(regex, text):
+                matches.append((match.start(), match.end()))
+        except re.error:
+            # Skip invalid regex patterns
+            continue
+
+    if not matches:
+        return text
+
+    # Sort matches by start position
+    matches.sort()
+
+    # Merge overlapping matches
+    merged_matches = []
+    for start, end in matches:
+        if merged_matches and start <= merged_matches[-1][1]:
+            # Overlapping or adjacent, merge them
+            merged_matches[-1] = (merged_matches[-1][0], max(merged_matches[-1][1], end))
+        else:
+            merged_matches.append((start, end))
+
+    # Build colorized text
+    result = []
+    last_pos = 0
+
+    for start, end in merged_matches:
+        # Add unmatched text (white/default)
+        result.append(text[last_pos:start])
+        # Add matched text (highlighted)
+        result.append(f"{COLOR_HIGHLIGHT}{text[start:end]}{COLOR_RESET}")
+        last_pos = end
+
+    # Add remaining unmatched text
+    result.append(text[last_pos:])
+
+    return "".join(result)
+
+
 def display_tui(content: str, matched_patterns: list) -> None:
     """Display TUI with clipboard content and matched patterns.
 
@@ -133,10 +190,21 @@ def display_tui(content: str, matched_patterns: list) -> None:
 
     lines = content.split("\n")
     for i, line in enumerate(lines[:3]):
-        if len(line) > 80:
-            print(f"{COLOR_GREEN}{line[:80]}...{COLOR_RESET}")
+        # Colorize the line before truncating
+        colorized_line = colorize_matched_text(line, matched_patterns)
+
+        # Handle truncation - need to be careful with ANSI codes
+        # Calculate visible length (excluding ANSI codes)
+        visible_length = len(re.sub(r"\033\[[0-9;]+m", "", colorized_line))
+
+        if visible_length > 80:
+            # Truncate to 80 visible characters
+            # This is complex with ANSI codes, so we'll truncate the original and re-colorize
+            truncated_line = line[:80]
+            colorized_line = colorize_matched_text(truncated_line, matched_patterns)
+            print(colorized_line + "...")
         else:
-            print(f"{COLOR_GREEN}{line}{COLOR_RESET}")
+            print(colorized_line)
 
     print(f"{GRAY}{'-' * 40}{RESET}")
     print()
