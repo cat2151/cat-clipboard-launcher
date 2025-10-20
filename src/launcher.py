@@ -9,6 +9,10 @@ from pathlib import Path
 import tomllib
 
 # ANSI color codes
+COLOR_RESET = "\033[0m"
+COLOR_GREEN = "\033[92m"  # Bright green for clipboard content
+COLOR_WHITE = "\033[97m"  # Bright white for headers and prompts
+COLOR_BRIGHT_RED = "\033[91m"  # Bright red for pattern options
 GRAY = "\033[90m"
 RESET = "\033[0m"
 
@@ -130,9 +134,9 @@ def display_tui(content: str, matched_patterns: list) -> None:
     lines = content.split("\n")
     for i, line in enumerate(lines[:3]):
         if len(line) > 80:
-            print(line[:80] + "...")
+            print(f"{COLOR_GREEN}{line[:80]}...{COLOR_RESET}")
         else:
-            print(line)
+            print(f"{COLOR_GREEN}{line}{COLOR_RESET}")
 
     print(f"{GRAY}{'-' * 40}{RESET}")
     print()
@@ -142,13 +146,13 @@ def display_tui(content: str, matched_patterns: list) -> None:
     for i, pattern in enumerate(matched_patterns):
         letter = chr(ord("a") + i)
         name = pattern.get("name", "unknown")
-        print(f"{letter}: {name}")
+        print(f"{COLOR_BRIGHT_RED}{letter}: {name}{COLOR_RESET}")
 
     print()
 
     # Show prompt
     last_letter = chr(ord("a") + len(matched_patterns) - 1)
-    print(f"選択してください (a-{last_letter}, ESC: 終了): ", end="", flush=True)
+    print(f"{COLOR_WHITE}選択してください (a-{last_letter}, ESC: 終了): {COLOR_RESET}", end="", flush=True)
 
 
 def get_user_choice(num_patterns: int) -> int | None:

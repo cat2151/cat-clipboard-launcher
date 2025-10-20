@@ -206,6 +206,23 @@ class TestDisplayTUI:
         assert "b: Pattern 2" in captured.out
         assert "選択してください (a-b, ESC: 終了):" in captured.out
 
+    def test_display_uses_colors(self, capsys):
+        """Test that display_tui uses ANSI color codes."""
+        content = "Test content"
+        patterns = [
+            {"name": "Test Pattern", "regex": ".*", "command": "cmd1"},
+        ]
+
+        display_tui(content, patterns)
+        captured = capsys.readouterr()
+
+        # Check for ANSI color codes
+        assert "\033[" in captured.out  # ANSI escape sequence present
+        assert "\033[92m" in captured.out  # Bright green for clipboard content
+        assert "\033[97m" in captured.out  # Bright white for headers
+        assert "\033[91m" in captured.out  # Bright red for pattern options
+        assert "\033[0m" in captured.out  # Reset code
+
     def test_display_truncates_long_lines(self, capsys):
         """Test that long lines are truncated to 80 characters."""
         content = "a" * 100
