@@ -13,6 +13,8 @@ COLOR_RESET = "\033[0m"
 COLOR_GREEN = "\033[92m"  # Bright green for clipboard content
 COLOR_WHITE = "\033[97m"  # Bright white for headers and prompts
 COLOR_BRIGHT_RED = "\033[91m"  # Bright red for pattern options
+GRAY = "\033[90m"
+RESET = "\033[0m"
 
 # Windows-specific import
 try:
@@ -126,9 +128,8 @@ def display_tui(content: str, matched_patterns: list) -> None:
         matched_patterns: List of matched pattern dictionaries
     """
     # Display clipboard content (first 3 lines, max 80 chars each)
-    # Using white for headers and green for content
-    print(f"{COLOR_WHITE}クリップボード内容:{COLOR_RESET}")
-    print(f"{COLOR_WHITE}{'-' * 40}{COLOR_RESET}")
+    print(f"{GRAY}クリップボード内容:{RESET}")
+    print(f"{GRAY}{'-' * 40}{RESET}")
 
     lines = content.split("\n")
     for i, line in enumerate(lines[:3]):
@@ -137,12 +138,11 @@ def display_tui(content: str, matched_patterns: list) -> None:
         else:
             print(f"{COLOR_GREEN}{line}{COLOR_RESET}")
 
-    print(f"{COLOR_WHITE}{'-' * 40}{COLOR_RESET}")
+    print(f"{GRAY}{'-' * 40}{RESET}")
     print()
 
     # Display matched patterns
-    # Using bright red for pattern options
-    print(f"{COLOR_WHITE}マッチしたパターン:{COLOR_RESET}")
+    print(f"{GRAY}マッチしたパターン:{RESET}")
     for i, pattern in enumerate(matched_patterns):
         letter = chr(ord("a") + i)
         name = pattern.get("name", "unknown")
