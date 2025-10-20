@@ -288,7 +288,7 @@ def main(config_path: Path) -> None:
     execute_command(command, temp_file_path)
 
     # Handle output file if specified and write_output_to_clipboard is enabled
-    write_to_clipboard = config.get("write_output_to_clipboard", True)
+    write_to_clipboard = selected_pattern.get("write_output_to_clipboard", False)
     output_file_pattern = selected_pattern.get("output_file")
 
     if write_to_clipboard and output_file_pattern:

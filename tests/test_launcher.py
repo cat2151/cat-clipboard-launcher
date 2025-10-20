@@ -531,20 +531,20 @@ class TestOutputFileIntegration:
         self, mock_choice, mock_copy, mock_paste, mock_run, tmp_path
     ):
         """Test that output file is written to clipboard when enabled."""
-        # Create config with write_output_to_clipboard enabled
+        # Create config with write_output_to_clipboard enabled at pattern level
         config_file = tmp_path / "config.toml"
         clipboard_temp = tmp_path / "clipboard.txt"
 
         config_file.write_text(
             f"""
 clipboard_temp_file = "{clipboard_temp}"
-write_output_to_clipboard = true
 
 [[patterns]]
 name = "Test Pattern"
 regex = "test"
 command = "echo test > {{CLIPBOARD_FILE}}.output"
 output_file = "{{CLIPBOARD_FILE}}.output"
+write_output_to_clipboard = true
 """
         )
 
@@ -571,20 +571,20 @@ output_file = "{{CLIPBOARD_FILE}}.output"
     @patch("src.launcher.get_user_choice")
     def test_output_file_not_written_when_disabled(self, mock_choice, mock_copy, mock_paste, mock_run, tmp_path):
         """Test that output file is not written to clipboard when disabled."""
-        # Create config with write_output_to_clipboard disabled
+        # Create config with write_output_to_clipboard disabled at pattern level
         config_file = tmp_path / "config.toml"
         clipboard_temp = tmp_path / "clipboard.txt"
 
         config_file.write_text(
             f"""
 clipboard_temp_file = "{clipboard_temp}"
-write_output_to_clipboard = false
 
 [[patterns]]
 name = "Test Pattern"
 regex = "test"
 command = "echo test"
 output_file = "{{CLIPBOARD_FILE}}.output"
+write_output_to_clipboard = false
 """
         )
 
@@ -614,7 +614,6 @@ output_file = "{{CLIPBOARD_FILE}}.output"
         config_file.write_text(
             f"""
 clipboard_temp_file = "{clipboard_temp}"
-write_output_to_clipboard = true
 
 [[patterns]]
 name = "Test Pattern"
@@ -640,10 +639,10 @@ command = "echo test"
     @patch("src.launcher.pyperclip.paste")
     @patch("src.launcher.pyperclip.copy")
     @patch("src.launcher.get_user_choice")
-    def test_default_write_output_to_clipboard_is_true(
+    def test_default_write_output_to_clipboard_is_false(
         self, mock_choice, mock_copy, mock_paste, mock_run, tmp_path, capsys
     ):
-        """Test that write_output_to_clipboard defaults to true when not specified."""
+        """Test that write_output_to_clipboard defaults to false when not specified."""
         # Create config WITHOUT write_output_to_clipboard setting
         config_file = tmp_path / "config.toml"
         clipboard_temp = tmp_path / "clipboard.txt"
@@ -674,8 +673,8 @@ output_file = "{{CLIPBOARD_FILE}}.output"
         with pytest.raises(SystemExit):
             main(config_file)
 
-        # Should attempt to write to clipboard (default is true)
+        # Should NOT write to clipboard (default is false)
         captured = capsys.readouterr()
-        assert "出力をクリップボードに書き戻しました" in captured.out
-        # Verify the copy was called with the output content
-        mock_copy.assert_called_once_with("Output from command")
+        assert "出力をクリップボードに書き戻しました" not in captured.out
+        # Verify the copy was NOT called
+        mock_copy.assert_not_called()
