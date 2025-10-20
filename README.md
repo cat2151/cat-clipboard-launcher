@@ -63,12 +63,62 @@
 pip install -r requirements.txt
 ```
 
+## Quick Start Guide
+
+cat-clipboard-launcherを最速で使い始める方法：
+
+### 1. 必要最小限の設定ファイルを作成
+
+プロジェクトのルートディレクトリ（`src/launcher.py`と同じ階層）に`config.toml`を作成し、**たった1行**追加するだけ：
+
+```toml
+[[patterns]]
+name = "テキストエディタで開く"
+regex = ".*"
+command = "notepad.exe {CLIPBOARD_FILE}"
+```
+
+これで設定完了です！
+
+### 2. 使ってみる
+
+1. 何かテキストをクリップボードにコピーする
+2. ランチャーを起動する：
+   ```bash
+   python src/launcher.py --config-filename config.toml
+   ```
+3. `a`キーを押してパターンを選択
+4. メモ帳が起動してクリップボードの内容が表示されます
+
+**注意事項：**
+- `clipboard_temp_file`の設定は省略可能です（デフォルト：カレントディレクトリの`clipboard_content.txt`）
+- パターンは最低1つ必要です
+
+### より詳しい設定
+
+複数のパターンを追加して、クリップボードの内容に応じて自動判別できます：
+
+```toml
+# clipboard_temp_fileは省略可（デフォルト：./clipboard_content.txt）
+
+[[patterns]]
+name = "URL"
+regex = "^https?://.*"
+command = "start chrome.exe {CLIPBOARD_FILE}"
+
+[[patterns]]
+name = "GitHub Issue"
+regex = "#\\d+"
+command = "notepad.exe {CLIPBOARD_FILE}"
+```
+
 ## Configuration
 
 Create or edit `config.toml` in the same directory as the launcher script:
 
 ```toml
 # Path where clipboard content will be saved temporarily
+# OPTIONAL: Defaults to "./clipboard_content.txt" (in current directory)
 clipboard_temp_file = "C:/temp/clipboard_content.txt"
 
 # Pattern definitions
@@ -85,8 +135,10 @@ command = "notepad.exe {CLIPBOARD_FILE}"
 
 ### Configuration Fields
 
-- `clipboard_temp_file`: Full path to temporary file for clipboard content
-- `patterns`: Array of pattern definitions
+- `clipboard_temp_file` (optional): Full path to temporary file for clipboard content
+  - **Default**: `clipboard_content.txt` in the current directory
+  - You can omit this field to use the default location
+- `patterns` (required): Array of pattern definitions
   - `name`: Display name for the pattern
   - `regex`: Regular expression to match clipboard content
   - `command`: Command to execute (use `{CLIPBOARD_FILE}` as placeholder)

@@ -2,8 +2,9 @@
 # クリップボードランチャー設定ファイル
 
 # 一時ファイルパス（クリップボード内容を保存）
+# オプション：省略した場合、カレントディレクトリの clipboard_content.txt を使用
 # Windowsパス形式（スラッシュまたはバックスラッシュ）
-clipboard_temp_file = "C:/temp/clipboard_content.txt"
+# clipboard_temp_file = "C:/temp/clipboard_content.txt"
 
 # パターン定義（配列形式）
 [[patterns]]
