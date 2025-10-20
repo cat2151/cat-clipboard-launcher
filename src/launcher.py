@@ -194,9 +194,6 @@ def write_output_to_clipboard(output_file_path: Path) -> None:
 
     Args:
         output_file_path: Path to output file
-
-    Raises:
-        SystemExit: If file read fails
     """
     try:
         if not output_file_path.exists():
