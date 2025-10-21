@@ -69,7 +69,7 @@ Create or edit `config.toml` in the same directory as the launcher script:
 
 ```toml
 # Path where clipboard content will be saved temporarily
-clipboard_temp_file = "C:/temp/clipboard_content.txt"
+clipboard_temp_file = "./clipboard_content.txt"
 
 # Pattern definitions
 [[patterns]]
