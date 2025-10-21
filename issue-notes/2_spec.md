@@ -85,7 +85,7 @@ key = msvcrt.getch()  # bytes型で返される（例: b'a', b'\x1b'）
 ## TOML設定ファイル仕様
 
 ### ファイル名
-`config.toml`（スクリプトと同じディレクトリ、またはコマンドライン引数で指定可能）
+`config.toml`（任意のディレクトリ、コマンドライン引数で指定。参考例は `examples/config.toml` を参照）
 
 ### 構造例
 ```toml

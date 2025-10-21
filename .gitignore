@@ -209,3 +209,6 @@ __marimo__/
 #
 secrets/
 *.bat
+
+# Clipboard launcher temporary files
+clipboard_content.txt
