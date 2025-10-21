@@ -798,3 +798,43 @@ output_file = "{{CLIPBOARD_FILE}}.output"
         assert "出力をクリップボードに書き戻しました" not in captured.out
         # Verify the copy was NOT called
         mock_copy.assert_not_called()
+
+
+class TestDefaultClipboardTempFile:
+    """Tests for default clipboard_temp_file behavior."""
+
+    def test_default_clipboard_temp_file(self, tmp_path):
+        """Test that clipboard_temp_file defaults to clipboard_content.txt in current directory."""
+        # Create a config file without clipboard_temp_file
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(
+            """
+[[patterns]]
+name = "Test"
+regex = "test"
+command = "echo test"
+"""
+        )
+
+        # Mock clipboard to have content
+        with patch("src.launcher.pyperclip.paste") as mock_paste:
+            mock_paste.return_value = "test content"
+
+            # Mock get_user_choice to return None (ESC key) to avoid hanging
+            with patch("src.launcher.get_user_choice") as mock_choice:
+                mock_choice.return_value = None
+
+                # Call main with config_path - should not raise an error
+                with pytest.raises(SystemExit) as exc_info:
+                    main(config_file)
+
+                # Should exit with 0 (ESC was pressed)
+                assert exc_info.value.code == 0
+
+                # Check that the default temp file was created
+                default_temp_file = Path.cwd() / "clipboard_content.txt"
+                assert default_temp_file.exists()
+                assert default_temp_file.read_text(encoding="utf-8") == "test content"
+
+                # Clean up
+                default_temp_file.unlink()

@@ -316,10 +316,9 @@ def main(config_path: Path) -> None:
     content = get_clipboard_content()
 
     # Save to temporary file
-    temp_file_path = Path(config.get("clipboard_temp_file", ""))
-    if not temp_file_path:
-        print("エラー: 設定ファイルにclipboard_temp_fileが定義されていません")
-        sys.exit(1)
+    # Default to clipboard_content.txt in current directory if not specified
+    default_temp_file = Path.cwd() / "clipboard_content.txt"
+    temp_file_path = Path(config.get("clipboard_temp_file", default_temp_file))
 
     save_to_temp_file(content, temp_file_path)
 
