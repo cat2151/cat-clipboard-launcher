@@ -10,6 +10,8 @@ from src.launcher import (
     display_tui,
     execute_command,
     get_clipboard_content,
+    get_display_lines,
+    get_matched_line_numbers,
     get_user_choice,
     load_config,
     main,
@@ -286,6 +288,161 @@ class TestColorizeMatchedText:
         assert "\033[93mhttps://example.com\033[0m" in result
 
 
+class TestGetMatchedLineNumbers:
+    """Tests for get_matched_line_numbers function."""
+
+    def test_single_line_match(self):
+        """Test finding a single matched line."""
+        content = "line1\nmatched line\nline3"
+        patterns = [{"regex": "matched"}]
+
+        result = get_matched_line_numbers(content, patterns)
+        assert result == [1]
+
+    def test_multiple_line_matches(self):
+        """Test finding multiple matched lines."""
+        content = "match1\nline2\nmatch3\nline4\nmatch5"
+        patterns = [{"regex": "match"}]
+
+        result = get_matched_line_numbers(content, patterns)
+        assert result == [0, 2, 4]
+
+    def test_multiple_patterns_same_line(self):
+        """Test multiple patterns matching the same line."""
+        content = "test matched line\nother line"
+        patterns = [{"regex": "test"}, {"regex": "matched"}]
+
+        result = get_matched_line_numbers(content, patterns)
+        assert result == [0]  # Both patterns match line 0, should appear once
+
+    def test_no_matches(self):
+        """Test when no lines match."""
+        content = "line1\nline2\nline3"
+        patterns = [{"regex": "notfound"}]
+
+        result = get_matched_line_numbers(content, patterns)
+        assert result == []
+
+    def test_invalid_regex_skipped(self):
+        """Test that invalid regex patterns are skipped."""
+        content = "test line\nother line"
+        patterns = [{"regex": "[invalid(regex"}, {"regex": "test"}]
+
+        result = get_matched_line_numbers(content, patterns)
+        assert result == [0]  # Only valid pattern should match
+
+
+class TestGetDisplayLines:
+    """Tests for get_display_lines function."""
+
+    def test_single_match_with_context(self):
+        """Test displaying single matched line with context."""
+        content = "line0\nline1\nmatched line\nline3\nline4"
+        patterns = [{"regex": "matched"}]
+
+        result = get_display_lines(content, patterns)
+
+        assert len(result) == 3
+        assert result[0] == ("line1", 1)  # Line before
+        assert result[1] == ("matched line", 2)  # Matched line
+        assert result[2] == ("line3", 3)  # Line after
+
+    def test_single_match_at_start(self):
+        """Test single match at file start shows marker."""
+        content = "matched line\nline1\nline2"
+        patterns = [{"regex": "matched"}]
+
+        result = get_display_lines(content, patterns)
+
+        assert len(result) == 3
+        assert result[0] == ("(file先頭)", -1)  # File start marker
+        assert result[1] == ("matched line", 0)  # Matched line
+        assert result[2] == ("line1", 1)  # Line after
+
+    def test_single_match_at_end(self):
+        """Test single match at file end shows marker."""
+        content = "line0\nline1\nmatched line"
+        patterns = [{"regex": "matched"}]
+
+        result = get_display_lines(content, patterns)
+
+        assert len(result) == 3
+        assert result[0] == ("line1", 1)  # Line before
+        assert result[1] == ("matched line", 2)  # Matched line
+        assert result[2] == ("(file終端)", -1)  # File end marker
+
+    def test_single_match_single_line_file(self):
+        """Test single match in a single-line file."""
+        content = "matched line"
+        patterns = [{"regex": "matched"}]
+
+        result = get_display_lines(content, patterns)
+
+        assert len(result) == 3
+        assert result[0] == ("(file先頭)", -1)  # File start marker
+        assert result[1] == ("matched line", 0)  # Matched line
+        assert result[2] == ("(file終端)", -1)  # File end marker
+
+    def test_two_matches(self):
+        """Test displaying two matched lines."""
+        content = "line0\nmatch1\nline2\nmatch2\nline4"
+        patterns = [{"regex": "match"}]
+
+        result = get_display_lines(content, patterns)
+
+        assert len(result) == 3
+        assert result[0] == ("line0", 0)  # Line before first match
+        assert result[1] == ("match1", 1)  # First matched line
+        assert result[2] == ("match2", 3)  # Second matched line
+
+    def test_two_matches_at_start(self):
+        """Test two matches starting at file start."""
+        content = "match1\nmatch2\nline2"
+        patterns = [{"regex": "match"}]
+
+        result = get_display_lines(content, patterns)
+
+        assert len(result) == 3
+        assert result[0] == ("(file先頭)", -1)  # File start marker
+        assert result[1] == ("match1", 0)  # First matched line
+        assert result[2] == ("match2", 1)  # Second matched line
+
+    def test_three_or_more_matches(self):
+        """Test displaying first 3 of many matched lines."""
+        content = "match0\nmatch1\nmatch2\nmatch3\nmatch4"
+        patterns = [{"regex": "match"}]
+
+        result = get_display_lines(content, patterns)
+
+        assert len(result) == 3
+        assert result[0] == ("match0", 0)
+        assert result[1] == ("match1", 1)
+        assert result[2] == ("match2", 2)
+
+    def test_no_matches_fallback(self):
+        """Test fallback to first 3 lines when no matches."""
+        content = "line0\nline1\nline2\nline3"
+        patterns = [{"regex": "notfound"}]
+
+        result = get_display_lines(content, patterns)
+
+        assert len(result) == 3
+        assert result[0] == ("line0", 0)
+        assert result[1] == ("line1", 1)
+        assert result[2] == ("line2", 2)
+
+    def test_empty_content(self):
+        """Test with empty content."""
+        content = ""
+        patterns = [{"regex": "test"}]
+
+        result = get_display_lines(content, patterns)
+
+        # Empty content results in one empty line
+        assert len(result) == 1
+        assert result[0] == ("", 0)
+
+
 class TestDisplayTUI:
     """Tests for display_tui function."""
 
@@ -301,14 +458,16 @@ class TestDisplayTUI:
         captured = capsys.readouterr()
 
         assert "クリップボード内容:" in captured.out
-        assert "Short line" in captured.out.replace("\033[93m", "").replace("\033[0m", "")
+        # Should show file start marker, matched line, file end marker
+        assert "(file先頭)" in captured.out
+        assert "(file終端)" in captured.out
         assert "a: Pattern 1" in captured.out
         assert "b: Pattern 2" in captured.out
         assert "選択してください (a-b, ESC: 終了):" in captured.out
 
     def test_display_with_colorization(self, capsys):
         """Test that matches are colorized in display."""
-        content = "https://example.com"
+        content = "line0\nhttps://example.com\nline2"
         patterns = [{"name": "URL", "regex": r"https?://\S+", "command": "cmd"}]
 
         display_tui(content, patterns)
@@ -320,8 +479,8 @@ class TestDisplayTUI:
 
     def test_display_truncates_long_lines(self, capsys):
         """Test that long lines are truncated to 80 characters."""
-        content = "a" * 100
-        patterns = [{"name": "Pattern 1", "regex": ".*", "command": "cmd1"}]
+        content = "line0\n" + "a" * 100 + "\nline2"
+        patterns = [{"name": "Pattern 1", "regex": "a+", "command": "cmd1"}]
 
         display_tui(content, patterns)
         captured = capsys.readouterr()
@@ -336,22 +495,46 @@ class TestDisplayTUI:
                 assert "..." in line
                 break
 
-    def test_display_shows_only_first_3_lines(self, capsys):
-        """Test that only first 3 lines are shown."""
-        content = "line1\nline2\nline3\nline4\nline5"
-        patterns = [{"name": "Pattern 1", "regex": "line", "command": "cmd1"}]
+    def test_display_shows_matched_lines(self, capsys):
+        """Test that matched lines are shown instead of first 3 lines."""
+        content = "line1\nline2\nline3\nmatched line\nline5"
+        patterns = [{"name": "Pattern 1", "regex": "matched", "command": "cmd1"}]
 
         display_tui(content, patterns)
         captured = capsys.readouterr()
 
         # Remove ANSI codes for checking
-        clean_output = captured.out.replace("\033[93m", "").replace("\033[0m", "")
+        clean_output = captured.out.replace("\033[93m", "").replace("\033[0m", "").replace("\033[90m", "")
 
-        assert "line1" in clean_output
-        assert "line2" in clean_output
+        # Should show line3 (before), matched line, line5 (after)
         assert "line3" in clean_output
-        assert "line4" not in clean_output
-        assert "line5" not in clean_output
+        assert "matched line" in clean_output
+        assert "line5" in clean_output
+        # Should NOT show line1 and line2
+        assert "line1" not in clean_output
+        assert "line2" not in clean_output
+
+    def test_display_file_start_marker(self, capsys):
+        """Test file start marker is displayed correctly."""
+        content = "matched line\nline2\nline3"
+        patterns = [{"name": "Pattern 1", "regex": "matched", "command": "cmd1"}]
+
+        display_tui(content, patterns)
+        captured = capsys.readouterr()
+
+        clean_output = captured.out.replace("\033[90m", "").replace("\033[0m", "")
+        assert "(file先頭)" in clean_output
+
+    def test_display_file_end_marker(self, capsys):
+        """Test file end marker is displayed correctly."""
+        content = "line1\nline2\nmatched line"
+        patterns = [{"name": "Pattern 1", "regex": "matched", "command": "cmd1"}]
+
+        display_tui(content, patterns)
+        captured = capsys.readouterr()
+
+        clean_output = captured.out.replace("\033[90m", "").replace("\033[0m", "")
+        assert "(file終端)" in clean_output
 
 
 class TestExecuteCommand:
