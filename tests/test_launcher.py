@@ -5,21 +5,18 @@ from unittest.mock import patch
 
 import pytest
 
-from src.launcher import (
+from src.clipboard import get_clipboard_content, save_to_temp_file, write_output_to_clipboard
+from src.config import load_config
+from src.executor import execute_command, replace_placeholders
+from src.input_handler import get_user_choice
+from src.launcher import main
+from src.pattern_matcher import (
     colorize_matched_text,
-    display_tui,
-    execute_command,
-    get_clipboard_content,
     get_display_lines,
     get_matched_line_numbers,
-    get_user_choice,
-    load_config,
-    main,
     match_patterns,
-    replace_placeholders,
-    save_to_temp_file,
-    write_output_to_clipboard,
 )
+from src.tui import display_tui
 
 
 class TestLoadConfig:
@@ -69,14 +66,14 @@ command = "echo test"
 class TestGetClipboardContent:
     """Tests for get_clipboard_content function."""
 
-    @patch("src.launcher.pyperclip.paste")
+    @patch("src.clipboard.pyperclip.paste")
     def test_get_valid_content(self, mock_paste):
         """Test getting valid clipboard content."""
         mock_paste.return_value = "test content"
         content = get_clipboard_content()
         assert content == "test content"
 
-    @patch("src.launcher.pyperclip.paste")
+    @patch("src.clipboard.pyperclip.paste")
     def test_get_empty_clipboard(self, mock_paste, capsys):
         """Test getting empty clipboard."""
         mock_paste.return_value = ""
@@ -87,7 +84,7 @@ class TestGetClipboardContent:
         captured = capsys.readouterr()
         assert "テキストが取得できません" in captured.out
 
-    @patch("src.launcher.pyperclip.paste")
+    @patch("src.clipboard.pyperclip.paste")
     def test_get_clipboard_exception(self, mock_paste, capsys):
         """Test clipboard read exception."""
         mock_paste.side_effect = Exception("Clipboard error")
@@ -540,7 +537,7 @@ class TestDisplayTUI:
 class TestExecuteCommand:
     """Tests for execute_command function."""
 
-    @patch("src.launcher.subprocess.run")
+    @patch("src.executor.subprocess.run")
     def test_execute_with_placeholder(self, mock_run, tmp_path):
         """Test executing command with placeholder replacement."""
         temp_file = tmp_path / "test.txt"
@@ -552,7 +549,7 @@ class TestExecuteCommand:
         expected_command = f"notepad.exe {temp_file.resolve()}"
         mock_run.assert_called_once_with(expected_command, shell=True, check=False)
 
-    @patch("src.launcher.subprocess.run")
+    @patch("src.executor.subprocess.run")
     def test_execute_without_placeholder(self, mock_run, tmp_path):
         """Test executing command without placeholder."""
         temp_file = tmp_path / "test.txt"
@@ -562,7 +559,7 @@ class TestExecuteCommand:
 
         mock_run.assert_called_once_with("echo hello", shell=True, check=False)
 
-    @patch("src.launcher.subprocess.run")
+    @patch("src.executor.subprocess.run")
     def test_execute_multiple_placeholders(self, mock_run, tmp_path):
         """Test executing command with multiple placeholders."""
         temp_file = tmp_path / "test.txt"
@@ -575,7 +572,7 @@ class TestExecuteCommand:
         expected_command = f"python.exe script.py --input {expected_path} --output {expected_path}.result"
         mock_run.assert_called_once_with(expected_command, shell=True, check=False)
 
-    @patch("src.launcher.subprocess.run")
+    @patch("src.executor.subprocess.run")
     def test_execute_command_exception(self, mock_run, tmp_path, capsys):
         """Test handling of command execution exception."""
         temp_file = tmp_path / "test.txt"
@@ -591,7 +588,7 @@ class TestExecuteCommand:
 class TestGetUserChoice:
     """Tests for get_user_choice function."""
 
-    @patch("src.launcher.msvcrt")
+    @patch("src.input_handler.msvcrt")
     def test_select_first_option(self, mock_msvcrt):
         """Test selecting first option with 'a' key."""
         mock_msvcrt.getch.return_value = b"a"
@@ -599,7 +596,7 @@ class TestGetUserChoice:
         choice = get_user_choice(3)
         assert choice == 0
 
-    @patch("src.launcher.msvcrt")
+    @patch("src.input_handler.msvcrt")
     def test_select_middle_option(self, mock_msvcrt):
         """Test selecting middle option with 'b' key."""
         mock_msvcrt.getch.return_value = b"b"
@@ -607,7 +604,7 @@ class TestGetUserChoice:
         choice = get_user_choice(3)
         assert choice == 1
 
-    @patch("src.launcher.msvcrt")
+    @patch("src.input_handler.msvcrt")
     def test_esc_returns_none(self, mock_msvcrt):
         """Test that ESC key returns None."""
         mock_msvcrt.getch.return_value = b"\x1b"
@@ -615,7 +612,7 @@ class TestGetUserChoice:
         choice = get_user_choice(3)
         assert choice is None
 
-    @patch("src.launcher.msvcrt")
+    @patch("src.input_handler.msvcrt")
     def test_invalid_key_retry(self, mock_msvcrt):
         """Test that invalid keys are ignored and retry occurs."""
         # First invalid key '1', then valid 'a'
@@ -625,7 +622,7 @@ class TestGetUserChoice:
         assert choice == 0
         assert mock_msvcrt.getch.call_count == 2
 
-    @patch("src.launcher.msvcrt")
+    @patch("src.input_handler.msvcrt")
     def test_out_of_range_retry(self, mock_msvcrt):
         """Test that out-of-range keys are ignored."""
         # 'd' is index 3, but we only have 2 patterns (0-1)
@@ -712,7 +709,7 @@ command = "echo test"
         )
 
         # Mock clipboard to have content
-        with patch("src.launcher.pyperclip.paste") as mock_paste:
+        with patch("src.clipboard.pyperclip.paste") as mock_paste:
             mock_paste.return_value = "test content"
 
             # Mock get_user_choice to return None (ESC key) to avoid hanging
@@ -773,7 +770,7 @@ class TestReplacePlaceholders:
 class TestWriteOutputToClipboard:
     """Tests for write_output_to_clipboard function."""
 
-    @patch("src.launcher.pyperclip.copy")
+    @patch("src.clipboard.pyperclip.copy")
     def test_write_existing_file(self, mock_copy, tmp_path, capsys):
         """Test writing existing output file to clipboard."""
         output_file = tmp_path / "output.txt"
@@ -796,7 +793,7 @@ class TestWriteOutputToClipboard:
         captured = capsys.readouterr()
         assert "警告: 出力ファイルが見つかりません" in captured.out
 
-    @patch("src.launcher.pyperclip.copy")
+    @patch("src.clipboard.pyperclip.copy")
     def test_write_empty_file(self, mock_copy, tmp_path, capsys):
         """Test writing empty output file to clipboard."""
         output_file = tmp_path / "empty.txt"
@@ -809,7 +806,7 @@ class TestWriteOutputToClipboard:
         assert "出力をクリップボードに書き戻しました" in captured.out
         assert "0 文字" in captured.out
 
-    @patch("src.launcher.pyperclip.copy")
+    @patch("src.clipboard.pyperclip.copy")
     def test_write_multiline_file(self, mock_copy, tmp_path, capsys):
         """Test writing multiline output file to clipboard."""
         output_file = tmp_path / "multiline.txt"
@@ -826,9 +823,9 @@ class TestWriteOutputToClipboard:
 class TestOutputFileIntegration:
     """Integration tests for output_file functionality."""
 
-    @patch("src.launcher.subprocess.run")
-    @patch("src.launcher.pyperclip.paste")
-    @patch("src.launcher.pyperclip.copy")
+    @patch("src.executor.subprocess.run")
+    @patch("src.clipboard.pyperclip.paste")
+    @patch("src.clipboard.pyperclip.copy")
     @patch("src.launcher.get_user_choice")
     def test_output_file_written_to_clipboard_when_enabled(
         self, mock_choice, mock_copy, mock_paste, mock_run, tmp_path
@@ -868,9 +865,9 @@ write_output_to_clipboard = true
         # Verify clipboard was updated with output content
         mock_copy.assert_called_once_with("Output from command")
 
-    @patch("src.launcher.subprocess.run")
-    @patch("src.launcher.pyperclip.paste")
-    @patch("src.launcher.pyperclip.copy")
+    @patch("src.executor.subprocess.run")
+    @patch("src.clipboard.pyperclip.paste")
+    @patch("src.clipboard.pyperclip.copy")
     @patch("src.launcher.get_user_choice")
     def test_output_file_not_written_when_disabled(self, mock_choice, mock_copy, mock_paste, mock_run, tmp_path):
         """Test that output file is not written to clipboard when disabled."""
@@ -904,9 +901,9 @@ write_output_to_clipboard = false
         # Verify clipboard was NOT updated
         mock_copy.assert_not_called()
 
-    @patch("src.launcher.subprocess.run")
-    @patch("src.launcher.pyperclip.paste")
-    @patch("src.launcher.pyperclip.copy")
+    @patch("src.executor.subprocess.run")
+    @patch("src.clipboard.pyperclip.paste")
+    @patch("src.clipboard.pyperclip.copy")
     @patch("src.launcher.get_user_choice")
     def test_no_output_file_specified(self, mock_choice, mock_copy, mock_paste, mock_run, tmp_path):
         """Test that clipboard is not updated when no output_file is specified."""
@@ -938,9 +935,9 @@ command = "echo test"
         # Verify clipboard was NOT updated (no output_file specified)
         mock_copy.assert_not_called()
 
-    @patch("src.launcher.subprocess.run")
-    @patch("src.launcher.pyperclip.paste")
-    @patch("src.launcher.pyperclip.copy")
+    @patch("src.executor.subprocess.run")
+    @patch("src.clipboard.pyperclip.paste")
+    @patch("src.clipboard.pyperclip.copy")
     @patch("src.launcher.get_user_choice")
     def test_default_write_output_to_clipboard_is_false(
         self, mock_choice, mock_copy, mock_paste, mock_run, tmp_path, capsys
@@ -1000,7 +997,7 @@ command = "echo test"
         )
 
         # Mock clipboard to have content
-        with patch("src.launcher.pyperclip.paste") as mock_paste:
+        with patch("src.clipboard.pyperclip.paste") as mock_paste:
             mock_paste.return_value = "test content"
 
             # Mock get_user_choice to return None (ESC key) to avoid hanging
