@@ -61,3 +61,33 @@ def display_tui(content: str, matched_patterns: list) -> None:
     # Show prompt
     last_letter = chr(ord("a") + len(matched_patterns) - 1)
     print(f"{COLOR_WHITE}選択してください (a-{last_letter}, ESC: 終了): {COLOR_RESET}", end="", flush=True)
+
+
+def display_no_match_tui(content: str) -> None:
+    """Display TUI when no patterns match.
+
+    Args:
+        content: Clipboard text content
+    """
+    # Display clipboard content (first 3 lines)
+    print(f"{GRAY}クリップボード内容:{RESET}")
+    print(f"{GRAY}{'-' * 40}{RESET}")
+
+    lines = content.split("\n")
+    for i in range(min(3, len(lines))):
+        line = lines[i]
+        # Truncate if too long
+        if len(line) > 80:
+            print(line[:80] + "...")
+        else:
+            print(line)
+
+    print(f"{GRAY}{'-' * 40}{RESET}")
+    print()
+
+    # Display no match message
+    print(f"{GRAY}マッチする候補がありませんでした{RESET}")
+    print()
+
+    # Show prompt
+    print(f"{COLOR_WHITE}任意のキーを押して終了: {COLOR_RESET}", end="", flush=True)
