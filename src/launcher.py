@@ -7,9 +7,9 @@ from pathlib import Path
 from .clipboard import get_clipboard_content, save_to_temp_file, write_output_to_clipboard
 from .config import get_patterns, get_temp_file_path, load_config
 from .executor import execute_command, replace_placeholders
-from .input_handler import get_user_choice
+from .input_handler import get_user_choice, wait_for_any_key
 from .pattern_matcher import match_patterns
-from .tui import display_tui
+from .tui import display_no_match_tui, display_tui
 
 
 def main(config_path: Path) -> None:
@@ -34,7 +34,11 @@ def main(config_path: Path) -> None:
 
     # Check if any patterns matched
     if not matched_patterns:
-        print("マッチするパターンがありません")
+        # Display TUI with no-match message
+        display_no_match_tui(content)
+        # Wait for user to press any key
+        wait_for_any_key()
+        print("\n終了しました")
         sys.exit(0)
 
     # Warn if too many patterns matched

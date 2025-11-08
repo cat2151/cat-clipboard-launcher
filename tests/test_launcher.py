@@ -633,6 +633,114 @@ class TestGetUserChoice:
         assert mock_msvcrt.getch.call_count == 2
 
 
+class TestWaitForAnyKey:
+    """Tests for wait_for_any_key function."""
+
+    @patch("src.input_handler.msvcrt")
+    def test_wait_for_any_key(self, mock_msvcrt):
+        """Test that wait_for_any_key waits for a key press."""
+        from src.input_handler import wait_for_any_key
+
+        mock_msvcrt.getch.return_value = b"a"
+
+        wait_for_any_key()
+
+        mock_msvcrt.getch.assert_called_once()
+
+
+class TestDisplayNoMatchTUI:
+    """Tests for display_no_match_tui function."""
+
+    def test_display_short_content(self, capsys):
+        """Test displaying short clipboard content with no matches."""
+        from src.tui import display_no_match_tui
+
+        content = "Short line"
+
+        display_no_match_tui(content)
+        captured = capsys.readouterr()
+
+        assert "クリップボード内容:" in captured.out
+        assert "Short line" in captured.out
+        assert "マッチする候補がありませんでした" in captured.out
+        assert "任意のキーを押して終了:" in captured.out
+
+    def test_display_multiline_content(self, capsys):
+        """Test displaying multiline clipboard content with no matches."""
+        from src.tui import display_no_match_tui
+
+        content = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5"
+
+        display_no_match_tui(content)
+        captured = capsys.readouterr()
+
+        # Should show first 3 lines
+        assert "Line 1" in captured.out
+        assert "Line 2" in captured.out
+        assert "Line 3" in captured.out
+        # Should not show lines beyond 3
+        assert "Line 4" not in captured.out
+        assert "Line 5" not in captured.out
+
+    def test_display_long_line_truncated(self, capsys):
+        """Test that long lines are truncated to 80 characters."""
+        from src.tui import display_no_match_tui
+
+        content = "a" * 100
+
+        display_no_match_tui(content)
+        captured = capsys.readouterr()
+
+        # Should contain ellipsis for truncation
+        assert "..." in captured.out
+
+
+class TestNoMatchIntegration:
+    """Integration tests for no-match scenario."""
+
+    @patch("src.clipboard.pyperclip.paste")
+    @patch("src.launcher.wait_for_any_key")
+    def test_main_with_no_matches(self, mock_wait, mock_paste, tmp_path, capsys):
+        """Test main() when no patterns match."""
+        from src.launcher import main
+
+        # Create config file
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(
+            f"""
+clipboard_temp_file = "{tmp_path / "clipboard.txt"}"
+
+[[patterns]]
+name = "URL Pattern"
+regex = "^https?://.*"
+command = "echo test"
+"""
+        )
+
+        # Mock clipboard to have non-matching content
+        mock_paste.return_value = "just some text"
+
+        # Mock wait_for_any_key to return immediately
+        mock_wait.return_value = None
+
+        # Call main - should exit with 0
+        with pytest.raises(SystemExit) as exc_info:
+            main(config_file)
+
+        assert exc_info.value.code == 0
+
+        # Check that the no-match UI was displayed
+        captured = capsys.readouterr()
+        assert "クリップボード内容:" in captured.out
+        assert "just some text" in captured.out
+        assert "マッチする候補がありませんでした" in captured.out
+        assert "任意のキーを押して終了:" in captured.out
+        assert "終了しました" in captured.out
+
+        # Verify wait_for_any_key was called
+        mock_wait.assert_called_once()
+
+
 class TestIntegration:
     """Integration tests for the launcher."""
 

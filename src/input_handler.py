@@ -34,3 +34,15 @@ def get_user_choice(num_patterns: int) -> int | None:
                 return index
 
         # Invalid input, continue waiting
+
+
+def wait_for_any_key() -> None:
+    """Wait for any key press.
+
+    Used when there are no matches and we want to show a message
+    before exiting.
+    """
+    if msvcrt is None:
+        raise RuntimeError("msvcrt is not available (Windows only)")
+
+    msvcrt.getch()
