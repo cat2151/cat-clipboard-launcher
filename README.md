@@ -72,10 +72,7 @@ cat-clipboard-launcherを最速で使い始める方法：
 プロジェクトのルートディレクトリ（`src/launcher.py`と同じ階層）に`config.toml`を作成し、**たった1行**追加するだけ：
 
 ```toml
-[[patterns]]
-name = "テキストエディタで開く"
-regex = ".*"
-command = "notepad.exe {CLIPBOARD_FILE}"
+patterns = [{name = "テキストエディタで開く", regex = ".*", command = "notepad.exe {CLIPBOARD_FILE}"}]
 ```
 
 これで設定完了です！
