@@ -1,4 +1,4 @@
-Last updated: 2025-11-10
+Last updated: 2025-12-02
 
 # 開発状況生成プロンプト（開発者向け）
 
@@ -162,6 +162,7 @@ Last updated: 2025-11-10
 - .github/actions-tmp/generated-docs/project-overview-generated-prompt.md
 - .github/actions-tmp/generated-docs/project-overview.md
 - .github/actions-tmp/generated-docs/style.css
+- .github/actions-tmp/googled947dc864c270e07.html
 - .github/actions-tmp/issue-notes/10.md
 - .github/actions-tmp/issue-notes/11.md
 - .github/actions-tmp/issue-notes/12.md
@@ -204,6 +205,7 @@ Last updated: 2025-11-10
 - _config.yml
 - examples/config.toml
 - generated-docs/project-overview-generated-prompt.md
+- googled947dc864c270e07.html
 - issue-notes/2_spec.md
 - pytest.ini
 - requirements.txt
@@ -355,23 +357,21 @@ write_output_to_clipboard = true  # Optional: default is false. Set to true to w
 
 ## 最近の変更（過去7日間）
 ### コミット履歴:
-683eb18 Merge pull request #38 from cat2151/copilot/update-readme-for-quickstart
-6f5a3e8 github-actionsリポジトリの共通ワークフローを導入
-7bbb265 Update README Quick Start Guide to use TOML inline table syntax
-e425182 Initial plan
-5b2b5a6 Merge pull request #36 from cat2151/copilot/add-feedback-for-no-matches
-ce43b13 Add user feedback when no patterns match
-24e00b4 Initial plan
+8ae1533 Google検索にindexさせる用
+da4b348 Google検索にindexさせる用
 
 ### 変更されたファイル:
 .github/workflows/call-daily-project-summary.yml
 .github/workflows/call-issue-note.yml
 .github/workflows/call-translate-readme.yml
-.gitignore
 README.md
 REFACTORING.md
-examples/config.toml
-issue-notes/2_spec.md
+_config.yml
+generated-docs/development-status-generated-prompt.md
+generated-docs/development-status.md
+generated-docs/project-overview-generated-prompt.md
+generated-docs/project-overview.md
+googled947dc864c270e07.html
 src/clipboard.py
 src/config.py
 src/executor.py
@@ -383,4 +383,4 @@ tests/test_launcher.py
 
 
 ---
-Generated at: 2025-11-10 08:17:11 JST
+Generated at: 2025-12-02 07:05:48 JST

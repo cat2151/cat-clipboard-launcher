@@ -1,51 +1,50 @@
-Last updated: 2025-11-10
+Last updated: 2025-12-02
 
 # Development Status
 
 ## 現在のIssues
-- [Issue #17](../issue-notes/17.md) は、`cat-clipboard-launcher` の設定ファイル `config.toml` に、アプリケーションの出力ファイルパスを指定する `output_file` の追加を提案しています。
-- [Issue #11](../issue-notes/11.md) は、`cat-clipboard-launcher` の設定例 `config.toml` を `examples/` ディレクトリに移動し、整理することを提案しています。
-- これらのIssueは、`cat-clipboard-launcher` の機能拡張と設定ファイルの管理に関する改善を目的としています。
+- [Issue #17](../issue-notes/17.md)は、`config.toml`に`output_file`や`write_output_to_clipboard`などの新しい設定項目を追加し、アプリケーションで引数のプレースホルダーを利用可能にする機能拡張を提案しています。
+- [Issue #11](../issue-notes/11.md)は、参考用の`config.toml`ファイルを`examples/`ディレクトリへ移動するというファイル整理に関するものです。
+- [Issue #17](../issue-notes/17.md)の機能は、外部アプリケーションが入力・出力ファイル名を指定するシナリオを想定しています。
 
 ## 次の一手候補
-1. `cat-clipboard-launcher` の `config.toml` に `output_file` 設定を追加し、アプリケーション引数での利用を可能にする [Issue #17](../issue-notes/17.md)
-   - 最初の小さな一歩: `src/config.py` を修正し、パターン定義に `output_file` および `write_output_to_clipboard` パラメータを読み込むためのフィールドを追加します。
+1. [Issue #17](../issue-notes/17.md): `config.toml`に`output_file`などの設定を追加し、アプリ引数にプレースホルダーを追加する実装の第一歩
+   - 最初の小さな一歩: `examples/config.toml` を修正し、`[[patterns]]` セクション内の「カスタムスクリプト」の例に、`output_file` と `write_output_to_clipboard` の設定例を追加する。
+   - Agent実行プロンプ:
+     ```
+     対象ファイル: `examples/config.toml`
+
+     実行内容: `examples/config.toml` 内の `[[patterns]]` セクションで定義されている「カスタムスクリプト」の例に、`output_file = "{CLIPBOARD_FILE}.result"` と `write_output_to_clipboard = true` の行を追加してください。これらの設定は、カスタムスクリプトが生成した出力ファイルをクリップボードに書き戻す機能をデモンストレートするものです。
+
+     確認事項: 既存のTOMLファイルの構造や他の設定例との整合性を崩さないように注意してください。追加する設定はコメントアウトせず、有効なTOMLとして記述してください。
+
+     期待する出力: 更新された `examples/config.toml` ファイルの全体の内容をmarkdown形式で出力してください。
+     ```
+
+2. [Issue #11](../issue-notes/11.md): 参考用の`config.toml`を`examples/`に移動する作業のコード側対応
+   - 最初の小さな一歩: `src/config.py` を分析し、設定ファイル（`config.toml`）をどのパスから読み込もうとしているか確認する。もし既存の`examples/config.toml`を参照していない場合、その参照パスを修正する。
    - Agent実行プロンプト:
      ```
-     対象ファイル: `src/config.py`, `examples/config.toml`
+     対象ファイル: `src/config.py`
 
-     実行内容: `src/config.py` の `Pattern` クラスまたは関連する設定読み込みロジックに `output_file` と `write_output_to_clipboard` フィールドを追加してください。これにより、`examples/config.toml` に示されているこれらの設定が正しくパースされ、アプリケーションで利用可能になるようにします。
+     実行内容: `src/config.py` を分析し、設定ファイル（`config.toml`）を読み込む際のファイルパス解決ロジックを確認してください。現在、リポジトリのルートディレクトリに`config.toml`は存在せず、`examples/config.toml`が存在します。`src/config.py`が`examples/config.toml`をデフォルト設定ファイルとして適切に読み込むようにパス解決ロジックを修正してください。
 
-     確認事項: 既存の `command` 処理に影響がないこと、`output_file` や `write_output_to_clipboard` が設定されていない場合のデフォルト動作が保持されることを確認してください。また、新しい設定がTOMLファイルから正しく読み込まれることを確認してください。
+     確認事項: 設定ファイルのデフォルトパス、ユーザーがカスタムパスを指定した場合の優先順位など、既存のパス解決ロジックの意図を理解した上で変更してください。変更がアプリケーションの起動や設定読み込みに悪影響を与えないことを確認してください。
 
-     期待する出力: `src/config.py` が更新され、`output_file` および `write_output_to_clipboard` 設定を読み込めるようになること。`examples/config.toml` にこれらの設定の具体的な使用例が追記・修正されること。
+     期待する出力: 提案されるコードの変更点と、必要に応じて更新された `src/config.py` の関連するコードスニペットをmarkdown形式で出力してください。
      ```
 
-2. `cat-clipboard-launcher` の `config.toml` を `examples/` ディレクトリに移動する [Issue #11](../issue-notes/11.md)
-   - 最初の小さな一歩: プロジェクトルートに存在する `config.toml` を `examples/config.toml` に移動し、`src/config.py` が設定ファイルを正しく見つけるように変更が必要か調査します。
+3. `src/config.py` に設定値の基本的なバリデーション機能を追加する
+   - 最初の小さな一歩: `src/config.py` 内に、TOMLファイルから読み込んだ `patterns` リストが空でないか、および各パターン辞書に `name`, `regex`, `command` キーが必須で存在するかをチェックする基本的なバリデーション関数を追加する。
    - Agent実行プロンプト:
      ```
-     対象ファイル: `config.toml` (プロジェクトルート), `examples/config.toml`, `src/config.py`
+     対象ファイル: `src/config.py`
 
-     実行内容: プロジェクトルートの `config.toml` が存在する場合、それを `examples/config.toml` に移動してください。その後、`src/config.py` の設定ファイル読み込みロジックを修正し、ユーザーが明示的にパスを指定しない限り、デフォルトで `config.toml` を見つけられるようにします。この際、`examples/config.toml` はあくまで参考であり、デフォルトで読み込まれる設定ファイルではないことを考慮してください。
+     実行内容: `src/config.py` の `Config` クラス内に、TOML設定ファイルの `patterns` セクションの構造を検証するプライベートメソッド `_validate_patterns(self, patterns)` を追加してください。このメソッドは、`patterns`がリストであり空ではないこと、およびリスト内の各パターン辞書が必須キー（`name`, `regex`, `command`）をすべて持っていることを確認します。不足している場合は、`ValueError`などの適切な例外を発生させてください。その後、`load_config`メソッド内でこのバリデーションを呼び出すように修正してください。
 
-     確認事項: `src/config.py` が設定ファイルを正しく見つけられること、`config.toml` が存在しない場合のデフォルト動作が変更されないことを確認してください。既存のCLI引数による設定ファイルパス指定機能が引き続き動作することも重要です。
+     確認事項: バリデーションエラー発生時のユーザーへのメッセージが明確であること。既存の`load_config`メソッドのロジックに影響を与えないこと。
 
-     期待する出力: プロジェクトルートの `config.toml` が `examples/config.toml` に移動し、`src/config.py` の設定ファイル検索ロジックが改善され、デフォルトの動作と引数によるパス指定の両方で正しく設定が読み込まれるようになること。
-     ```
-
-3. `cat-clipboard-launcher` の `output_file` 機能に対するテストケースの追加 [Issue #17](../issue-notes/17.md)
-   - 最初の小さな一歩: `tests/test_launcher.py` に、`output_file` が指定された場合にコマンドが正しく実行され、その出力が一時ファイルに書き込まれることを検証するテスト関数を追加します。
-   - Agent実行プロンプト:
-     ```
-     対象ファイル: `src/executor.py`, `src/clipboard.py`, `tests/test_launcher.py`
-
-     実行内容: `src/executor.py` と `src/clipboard.py` に、`output_file` が指定された場合にコマンドの標準出力または指定されたファイルの内容を処理し、`write_output_to_clipboard` が `true` の場合にその内容をクリップボードに書き戻すロジックを実装してください。これらの機能を検証するための単体テストを `tests/test_launcher.py` に追加します。テストは、一時ファイルを作成し、コマンド実行後にそのファイル内容やクリップボードの内容を確認する形式で記述してください。
-
-     確認事項: テストがシステムの状態を変更せず、独立して実行できることを確認してください。また、`output_file` や `write_output_to_clipboard` が省略された場合の既存の動作に影響を与えないことを確認してください。テストはモックを使用して外部コマンド実行やクリップボード操作をシミュレートすることが望ましいです。
-
-     期待する出力: `src/executor.py` および `src/clipboard.py` に `output_file` と `write_output_to_clipboard` を処理するロジックが実装され、`tests/test_launcher.py` に対応する堅牢な単体テストが追加されること。
-     ```
+     期待する出力: `_validate_patterns` メソッドのコードスニペットと、`load_config` メソッド内でそのバリデーションを呼び出す箇所の修正案をmarkdown形式で出力してください。
 
 ---
-Generated at: 2025-11-10 08:17:39 JST
+Generated at: 2025-12-02 07:06:05 JST

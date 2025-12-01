@@ -1,4 +1,4 @@
-Last updated: 2025-11-10
+Last updated: 2025-12-02
 
 
 # プロジェクト概要生成プロンプト（来訪者向け）
@@ -282,6 +282,7 @@ ruff check --fix src/ tests/
 📁 examples/
   📄 config.toml
 📁 generated-docs/
+🌐 googled947dc864c270e07.html
 📁 issue-notes/
   📖 2_spec.md
 📄 pytest.ini
@@ -301,7 +302,9 @@ ruff check --fix src/ tests/
   📄 test_launcher.py
 
 ## ファイル詳細分析
-
+**googled947dc864c270e07.html** (1行, 53バイト)
+  - 関数: なし
+  - インポート: なし
 
 ## 関数呼び出し階層
 関数呼び出し階層を分析できませんでした
@@ -310,6 +313,7 @@ ruff check --fix src/ tests/
 .vscode/settings.json
 README.md
 REFACTORING.md
+googled947dc864c270e07.html
 issue-notes/2_spec.md
 
 上記の情報を基に、プロンプトで指定された形式でプロジェクト概要を生成してください。
@@ -322,4 +326,4 @@ issue-notes/2_spec.md
 
 
 ---
-Generated at: 2025-11-10 08:17:10 JST
+Generated at: 2025-12-02 07:05:47 JST
